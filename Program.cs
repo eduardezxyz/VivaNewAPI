@@ -1,5 +1,9 @@
+using Microsoft.AspNetCore.OData;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OData.Edm;
+using Microsoft.OData.ModelBuilder;
 using NewVivaApi.Data;
+using NewVivaApi.Models;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,7 +15,15 @@ builder.Services.AddControllers()
         // Handle circular references
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-    });
+    })
+    .AddOData(options => options
+        .Select()
+        .Filter()
+        .OrderBy()
+        .Expand()
+        .Count()
+        .SetMaxTop(1000)
+        .AddRouteComponents("odata", GetEdmModel()));
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -55,10 +67,24 @@ app.MapGet("/weatherforecast", () =>
 
 app.Run();
 
+// EDM Model for OData
+static IEdmModel GetEdmModel()
+{
+    var builder = new ODataConventionModelBuilder();
+    
+    // Add your entity sets here based on your models
+    // Using the view models since they have clean structure
+    builder.EntitySet<ProjectsVw>("Projects")
+        .EntityType.HasKey(p => p.ProjectId);
+    
+    // You can add more entity sets as you convert other controllers
+    // builder.EntitySet<PayAppsVw>("PayApps").EntityType.HasKey(p => p.PayAppId);
+    // builder.EntitySet<GeneralContractorsVw>("GeneralContractors").EntityType.HasKey(g => g.GeneralContractorId);
+    
+    return builder.GetEdmModel();
+}
+
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
-
-git config --global user.email "you@example.com"
-  git config --global user.name "Your Name"
