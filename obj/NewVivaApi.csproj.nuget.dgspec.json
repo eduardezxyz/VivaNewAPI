@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/Users/scuer/Documents/VivaNewAPI/NewVivaApi.csproj": {}
+    "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/NewVivaApi.csproj": {}
   },
   "projects": {
-    "/Users/scuer/Documents/VivaNewAPI/NewVivaApi.csproj": {
+    "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/NewVivaApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/scuer/Documents/VivaNewAPI/NewVivaApi.csproj",
+        "projectUniqueName": "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/NewVivaApi.csproj",
         "projectName": "NewVivaApi",
-        "projectPath": "/Users/scuer/Documents/VivaNewAPI/NewVivaApi.csproj",
-        "packagesPath": "/Users/scuer/.nuget/packages/",
-        "outputPath": "/Users/scuer/Documents/VivaNewAPI/obj/",
+        "projectPath": "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/NewVivaApi.csproj",
+        "packagesPath": "/Users/scuser/.nuget/packages/",
+        "outputPath": "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/Users/scuer/.nuget/NuGet/NuGet.Config"
+          "/Users/scuser/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
@@ -36,9 +36,9 @@
         "restoreAuditProperties": {
           "enableAudit": "true",
           "auditLevel": "low",
-          "auditMode": "direct"
+          "auditMode": "all"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "9.0.100"
       },
       "frameworks": {
         "net9.0": {
@@ -46,11 +46,17 @@
           "dependencies": {
             "Microsoft.AspNetCore.OData": {
               "target": "Package",
-              "version": "[9.3.2, )"
+              "version": "[8.0.9, )"
             },
             "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
               "version": "[9.0.0, )"
+            },
+            "Microsoft.CodeAnalysis.Analyzers": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[3.3.4, )"
             },
             "Microsoft.EntityFrameworkCore.SqlServer": {
               "target": "Package",
@@ -86,7 +92,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.303/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.100/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

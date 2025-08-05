@@ -60,21 +60,21 @@
           }
         }
       },
-      "Microsoft.AspNetCore.OData/9.3.2": {
+      "Microsoft.AspNetCore.OData/8.0.9": {
         "type": "package",
         "dependencies": {
-          "Microsoft.OData.Core": "[8.2.3, 9.0.0)",
-          "Microsoft.OData.Edm": "[8.2.3, 9.0.0)",
-          "Microsoft.OData.ModelBuilder": "[2.0.0, 3.0.0)",
-          "Microsoft.Spatial": "[8.2.3, 9.0.0)"
+          "Microsoft.OData.Core": "[7.9.4, 8.0.0)",
+          "Microsoft.OData.Edm": "[7.9.4, 8.0.0)",
+          "Microsoft.OData.ModelBuilder": "[1.0.8, 2.0.0)",
+          "Microsoft.Spatial": "[7.9.4, 8.0.0)"
         },
         "compile": {
-          "lib/net8.0/Microsoft.AspNetCore.OData.dll": {
+          "lib/net6.0/Microsoft.AspNetCore.OData.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net8.0/Microsoft.AspNetCore.OData.dll": {
+          "lib/net6.0/Microsoft.AspNetCore.OData.dll": {
             "related": ".xml"
           }
         }
@@ -98,7 +98,7 @@
           "Microsoft.AspNetCore.App"
         ]
       },
-      "Microsoft.Bcl.AsyncInterfaces/8.0.0": {
+      "Microsoft.Bcl.AsyncInterfaces/7.0.0": {
         "type": "package",
         "compile": {
           "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll": {
@@ -792,19 +792,6 @@
           "buildTransitive/net8.0/Microsoft.Extensions.Logging.Abstractions.targets": {}
         }
       },
-      "Microsoft.Extensions.ObjectPool/6.0.3": {
-        "type": "package",
-        "compile": {
-          "lib/net6.0/Microsoft.Extensions.ObjectPool.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net6.0/Microsoft.Extensions.ObjectPool.dll": {
-            "related": ".xml"
-          }
-        }
-      },
       "Microsoft.Extensions.Options/9.0.8": {
         "type": "package",
         "dependencies": {
@@ -993,26 +980,25 @@
           "lib/netstandard1.0/_._": {}
         }
       },
-      "Microsoft.OData.Core/8.2.3": {
+      "Microsoft.OData.Core/7.9.4": {
         "type": "package",
         "dependencies": {
-          "Microsoft.Bcl.AsyncInterfaces": "8.0.0",
-          "Microsoft.Extensions.ObjectPool": "6.0.3",
-          "Microsoft.OData.Edm": "[8.2.3]",
-          "Microsoft.Spatial": "[8.2.3]"
+          "Microsoft.Bcl.AsyncInterfaces": "5.0.0",
+          "Microsoft.OData.Edm": "[7.9.4]",
+          "Microsoft.Spatial": "[7.9.4]"
         },
         "compile": {
-          "lib/net8.0/Microsoft.OData.Core.dll": {
+          "lib/netstandard2.0/Microsoft.OData.Core.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net8.0/Microsoft.OData.Core.dll": {
+          "lib/netstandard2.0/Microsoft.OData.Core.dll": {
             "related": ".xml"
           }
         }
       },
-      "Microsoft.OData.Edm/8.2.3": {
+      "Microsoft.OData.Edm/7.9.4": {
         "type": "package",
         "dependencies": {
           "System.Runtime.CompilerServices.Unsafe": "4.6.0",
@@ -1020,30 +1006,30 @@
           "System.Text.Json": "4.6.0"
         },
         "compile": {
-          "lib/net8.0/Microsoft.OData.Edm.dll": {
+          "lib/netstandard2.0/Microsoft.OData.Edm.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net8.0/Microsoft.OData.Edm.dll": {
+          "lib/netstandard2.0/Microsoft.OData.Edm.dll": {
             "related": ".xml"
           }
         }
       },
-      "Microsoft.OData.ModelBuilder/2.0.0": {
+      "Microsoft.OData.ModelBuilder/1.0.8": {
         "type": "package",
         "dependencies": {
-          "Microsoft.OData.Edm": "[8.0.0, 9.0.0)",
-          "Microsoft.Spatial": "[8.0.0, 9.0.0)",
+          "Microsoft.OData.Edm": "[7.9.0, 8.0.0)",
+          "Microsoft.Spatial": "[7.9.0, 8.0.0)",
           "System.ComponentModel.Annotations": "4.6.0"
         },
         "compile": {
-          "lib/net8.0/Microsoft.OData.ModelBuilder.dll": {
+          "lib/net6.0/Microsoft.OData.ModelBuilder.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net8.0/Microsoft.OData.ModelBuilder.dll": {
+          "lib/net6.0/Microsoft.OData.ModelBuilder.dll": {
             "related": ".xml"
           }
         }
@@ -1061,15 +1047,15 @@
           }
         }
       },
-      "Microsoft.Spatial/8.2.3": {
+      "Microsoft.Spatial/7.9.4": {
         "type": "package",
         "compile": {
-          "lib/net8.0/Microsoft.Spatial.dll": {
+          "lib/netstandard2.0/Microsoft.Spatial.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net8.0/Microsoft.Spatial.dll": {
+          "lib/netstandard2.0/Microsoft.Spatial.dll": {
             "related": ".xml"
           }
         }
@@ -1880,18 +1866,21 @@
         "logo.png"
       ]
     },
-    "Microsoft.AspNetCore.OData/9.3.2": {
-      "sha512": "kbAz28Pex9+NBPvgXKHnCyyI5i5W099HsTWPuleyzeyjH4uY9dL89JgbAYaXx768Os9YJqt66+A66xAIjhMoTQ==",
+    "Microsoft.AspNetCore.OData/8.0.9": {
+      "sha512": "MezmT1r0Is9KhT8RCjU3Ro42EsZzet8qCREGyUIbZIllAYhos1QysmuvcsG843ReVt8jsmUSdR+IC0+57rRTZA==",
       "type": "package",
-      "path": "microsoft.aspnetcore.odata/9.3.2",
+      "path": "microsoft.aspnetcore.odata/8.0.9",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
-        "docs/README.md",
         "images/odata.png",
-        "lib/net8.0/Microsoft.AspNetCore.OData.dll",
-        "lib/net8.0/Microsoft.AspNetCore.OData.xml",
-        "microsoft.aspnetcore.odata.9.3.2.nupkg.sha512",
+        "lib/net5.0/Microsoft.AspNetCore.OData.dll",
+        "lib/net5.0/Microsoft.AspNetCore.OData.xml",
+        "lib/net6.0/Microsoft.AspNetCore.OData.dll",
+        "lib/net6.0/Microsoft.AspNetCore.OData.xml",
+        "lib/netcoreapp3.1/Microsoft.AspNetCore.OData.dll",
+        "lib/netcoreapp3.1/Microsoft.AspNetCore.OData.xml",
+        "microsoft.aspnetcore.odata.8.0.9.nupkg.sha512",
         "microsoft.aspnetcore.odata.nuspec"
       ]
     },
@@ -1911,16 +1900,15 @@
         "microsoft.aspnetcore.openapi.nuspec"
       ]
     },
-    "Microsoft.Bcl.AsyncInterfaces/8.0.0": {
-      "sha512": "3WA9q9yVqJp222P3x1wYIGDAkpjAku0TMUaaQV22g6L67AI0LdOIrVS7Ht2vJfLHGSPVuqN94vIr15qn+HEkHw==",
+    "Microsoft.Bcl.AsyncInterfaces/7.0.0": {
+      "sha512": "3aeMZ1N0lJoSyzqiP03hqemtb1BijhsJADdobn/4nsMJ8V1H+CrpuduUe4hlRdx+ikBQju1VGjMD1GJ3Sk05Eg==",
       "type": "package",
-      "path": "microsoft.bcl.asyncinterfaces/8.0.0",
+      "path": "microsoft.bcl.asyncinterfaces/7.0.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
         "LICENSE.TXT",
-        "PACKAGE.md",
         "THIRD-PARTY-NOTICES.TXT",
         "buildTransitive/net461/Microsoft.Bcl.AsyncInterfaces.targets",
         "buildTransitive/net462/_._",
@@ -1930,7 +1918,7 @@
         "lib/netstandard2.0/Microsoft.Bcl.AsyncInterfaces.xml",
         "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll",
         "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.xml",
-        "microsoft.bcl.asyncinterfaces.8.0.0.nupkg.sha512",
+        "microsoft.bcl.asyncinterfaces.7.0.0.nupkg.sha512",
         "microsoft.bcl.asyncinterfaces.nuspec",
         "useSharedDesignerContext.txt"
       ]
@@ -3685,25 +3673,6 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "Microsoft.Extensions.ObjectPool/6.0.3": {
-      "sha512": "IbQUEZr/LxxpPxkXDmKaemMeQNPjdHfk87HtTsI18a3RVgad0NOJSRaJ20hcesqL45PLcpQHR8xrPP7wZKbFQQ==",
-      "type": "package",
-      "path": "microsoft.extensions.objectpool/6.0.3",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "Icon.png",
-        "THIRD-PARTY-NOTICES.TXT",
-        "lib/net461/Microsoft.Extensions.ObjectPool.dll",
-        "lib/net461/Microsoft.Extensions.ObjectPool.xml",
-        "lib/net6.0/Microsoft.Extensions.ObjectPool.dll",
-        "lib/net6.0/Microsoft.Extensions.ObjectPool.xml",
-        "lib/netstandard2.0/Microsoft.Extensions.ObjectPool.dll",
-        "lib/netstandard2.0/Microsoft.Extensions.ObjectPool.xml",
-        "microsoft.extensions.objectpool.6.0.3.nupkg.sha512",
-        "microsoft.extensions.objectpool.nuspec"
-      ]
-    },
     "Microsoft.Extensions.Options/9.0.8": {
       "sha512": "OmTaQ0v4gxGQkehpwWIqPoEiwsPuG/u4HUsbOFoWGx4DKET2AXzopnFe/fE608FIhzc/kcg2p8JdyMRCCUzitQ==",
       "type": "package",
@@ -3982,43 +3951,53 @@
         "runtime.json"
       ]
     },
-    "Microsoft.OData.Core/8.2.3": {
-      "sha512": "c6AJxdmNHqTnH2XYQnYz4qttpIqfBpNBO4dZ68xDMxNN/+9Uu/pOKDZRAs7NCy50c+svCImh4v18J4g6Ycxoiw==",
+    "Microsoft.OData.Core/7.9.4": {
+      "sha512": "+dW3LgUlGzwq/dyBJ7PhPqTH1h+iS7Om3S0+nwmPsWZH0DxVOuOuSEr+5dbYvWFL49FfjQrYCi+wedZ89JBh/g==",
       "type": "package",
-      "path": "microsoft.odata.core/8.2.3",
+      "path": "microsoft.odata.core/7.9.4",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
-        "lib/net8.0/Microsoft.OData.Core.dll",
-        "lib/net8.0/Microsoft.OData.Core.xml",
-        "microsoft.odata.core.8.2.3.nupkg.sha512",
+        "lib/net45/Microsoft.OData.Core.dll",
+        "lib/net45/Microsoft.OData.Core.xml",
+        "lib/netstandard1.1/Microsoft.OData.Core.dll",
+        "lib/netstandard1.1/Microsoft.OData.Core.xml",
+        "lib/netstandard2.0/Microsoft.OData.Core.dll",
+        "lib/netstandard2.0/Microsoft.OData.Core.xml",
+        "microsoft.odata.core.7.9.4.nupkg.sha512",
         "microsoft.odata.core.nuspec"
       ]
     },
-    "Microsoft.OData.Edm/8.2.3": {
-      "sha512": "zba6EjkjyCT8ofUP7oXz1L5d8XfA20g0gGJMHohAAhCPJm1ChRzNEtoxYoYIB6qB7Ml19JDO6HZalO49/e/DTw==",
+    "Microsoft.OData.Edm/7.9.4": {
+      "sha512": "99KOeJKiIZHLLKOrDuOsbUs1G/AqIoGpXQnkxAqt/YSCWFVgBXw4wT0KpgKqw/j4aQRXQuFxJ3rPSFNCkwaTSA==",
       "type": "package",
-      "path": "microsoft.odata.edm/8.2.3",
+      "path": "microsoft.odata.edm/7.9.4",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
-        "lib/net8.0/Microsoft.OData.Edm.dll",
-        "lib/net8.0/Microsoft.OData.Edm.xml",
-        "microsoft.odata.edm.8.2.3.nupkg.sha512",
+        "lib/net45/Microsoft.OData.Edm.dll",
+        "lib/net45/Microsoft.OData.Edm.xml",
+        "lib/netstandard1.1/Microsoft.OData.Edm.dll",
+        "lib/netstandard1.1/Microsoft.OData.Edm.xml",
+        "lib/netstandard2.0/Microsoft.OData.Edm.dll",
+        "lib/netstandard2.0/Microsoft.OData.Edm.xml",
+        "microsoft.odata.edm.7.9.4.nupkg.sha512",
         "microsoft.odata.edm.nuspec"
       ]
     },
-    "Microsoft.OData.ModelBuilder/2.0.0": {
-      "sha512": "QzySAMGhLCMyLNHSTIYKFjJXetoDeGkRS/7JEjm7eMJlyu1Qv4MfL1CXQFg2uijizNu2jQojT0mdCpawXbyv8Q==",
+    "Microsoft.OData.ModelBuilder/1.0.8": {
+      "sha512": "svkoLjtvdRtyAuhcBugNAmKYE3zHFXE3C2HpaRXKeuB5mVxo5DK8ZSxoox0PqiwTSFqq0hlWNy5GC1fVgQlElQ==",
       "type": "package",
-      "path": "microsoft.odata.modelbuilder/2.0.0",
+      "path": "microsoft.odata.modelbuilder/1.0.8",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "images/odata.png",
-        "lib/net8.0/Microsoft.OData.ModelBuilder.dll",
-        "lib/net8.0/Microsoft.OData.ModelBuilder.xml",
-        "microsoft.odata.modelbuilder.2.0.0.nupkg.sha512",
+        "lib/net6.0/Microsoft.OData.ModelBuilder.dll",
+        "lib/net6.0/Microsoft.OData.ModelBuilder.xml",
+        "lib/netstandard2.0/Microsoft.OData.ModelBuilder.dll",
+        "lib/netstandard2.0/Microsoft.OData.ModelBuilder.xml",
+        "microsoft.odata.modelbuilder.1.0.8.nupkg.sha512",
         "microsoft.odata.modelbuilder.nuspec"
       ]
     },
@@ -4037,16 +4016,20 @@
         "microsoft.openapi.nuspec"
       ]
     },
-    "Microsoft.Spatial/8.2.3": {
-      "sha512": "N8rhHhMojEYdH9P+JG208+s6dpR5P1rVyiGaDB5oV2YTVH+zA5utK3V3V4ytAMLb4GaqOyLyzMOgSLEWM0ulgQ==",
+    "Microsoft.Spatial/7.9.4": {
+      "sha512": "eLTR0WylZ3CwstY6lEIjVpnjkhsxUq8Dj0dSrCTAwL76f0m6KnYea0Woy1roe6VH9Ed9HGUTeK+3qLbnqdnu2Q==",
       "type": "package",
-      "path": "microsoft.spatial/8.2.3",
+      "path": "microsoft.spatial/7.9.4",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
-        "lib/net8.0/Microsoft.Spatial.dll",
-        "lib/net8.0/Microsoft.Spatial.xml",
-        "microsoft.spatial.8.2.3.nupkg.sha512",
+        "lib/net45/Microsoft.Spatial.dll",
+        "lib/net45/Microsoft.Spatial.xml",
+        "lib/netstandard1.1/Microsoft.Spatial.dll",
+        "lib/netstandard1.1/Microsoft.Spatial.xml",
+        "lib/netstandard2.0/Microsoft.Spatial.dll",
+        "lib/netstandard2.0/Microsoft.Spatial.xml",
+        "microsoft.spatial.7.9.4.nupkg.sha512",
         "microsoft.spatial.nuspec"
       ]
     },
@@ -5460,27 +5443,28 @@
   },
   "projectFileDependencyGroups": {
     "net9.0": [
-      "Microsoft.AspNetCore.OData >= 9.3.2",
+      "Microsoft.AspNetCore.OData >= 8.0.9",
       "Microsoft.AspNetCore.OpenApi >= 9.0.0",
+      "Microsoft.CodeAnalysis.Analyzers >= 3.3.4",
       "Microsoft.EntityFrameworkCore.SqlServer >= 9.0.8",
       "Microsoft.EntityFrameworkCore.Tools >= 9.0.8",
       "Swashbuckle.AspNetCore >= 9.0.3"
     ]
   },
   "packageFolders": {
-    "/Users/scuer/.nuget/packages/": {}
+    "/Users/scuser/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/scuer/Documents/VivaNewAPI/NewVivaApi.csproj",
+      "projectUniqueName": "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/NewVivaApi.csproj",
       "projectName": "NewVivaApi",
-      "projectPath": "/Users/scuer/Documents/VivaNewAPI/NewVivaApi.csproj",
-      "packagesPath": "/Users/scuer/.nuget/packages/",
-      "outputPath": "/Users/scuer/Documents/VivaNewAPI/obj/",
+      "projectPath": "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/NewVivaApi.csproj",
+      "packagesPath": "/Users/scuser/.nuget/packages/",
+      "outputPath": "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/scuer/.nuget/NuGet/NuGet.Config"
+        "/Users/scuser/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
@@ -5502,9 +5486,9 @@
       "restoreAuditProperties": {
         "enableAudit": "true",
         "auditLevel": "low",
-        "auditMode": "direct"
+        "auditMode": "all"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "9.0.100"
     },
     "frameworks": {
       "net9.0": {
@@ -5512,11 +5496,17 @@
         "dependencies": {
           "Microsoft.AspNetCore.OData": {
             "target": "Package",
-            "version": "[9.3.2, )"
+            "version": "[8.0.9, )"
           },
           "Microsoft.AspNetCore.OpenApi": {
             "target": "Package",
             "version": "[9.0.0, )"
+          },
+          "Microsoft.CodeAnalysis.Analyzers": {
+            "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+            "suppressParent": "All",
+            "target": "Package",
+            "version": "[3.3.4, )"
           },
           "Microsoft.EntityFrameworkCore.SqlServer": {
             "target": "Package",
@@ -5552,7 +5542,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.303/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.100/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

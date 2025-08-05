@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NewVivaApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6ddc219a03336bb2859c51915b098d8ac3cbe13c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cb0694233716007c9f3b35ed46c8bdcd8d71281f")]
 [assembly: System.Reflection.AssemblyProductAttribute("NewVivaApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NewVivaApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
