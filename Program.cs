@@ -27,6 +27,7 @@ builder.Services.AddControllers()
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddAutoMapper(typeof(AutoMapperConfig));
 
 // Add DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -49,12 +50,14 @@ app.Run();
 // EDM Model for OData
 static IEdmModel GetEdmModel()
 {
-    var builder = new ODataConventionModelBuilder();
-    
+    var builder = new ODataConventionModelBuilder(); 
+
+	builder.EntityType<ProjectsVw>().HasKey(p => p.ProjectId);
+    builder.EntitySet<ProjectsVw>("Projects");    
     // Add your entity sets here based on your models
     // Using the view models since they have clean structure
-    builder.EntitySet<ProjectsVw>("Projects")
-        .EntityType.HasKey(p => p.ProjectId);
+    // builder.EntitySet<ProjectsVw>("Projects")
+    //     .EntityType.HasKey(p => p.ProjectId);
     
     // You can add more entity sets as you convert other controllers
     // builder.EntitySet<PayAppsVw>("PayApps").EntityType.HasKey(p => p.PayAppId);
