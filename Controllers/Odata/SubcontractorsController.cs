@@ -97,7 +97,7 @@ namespace NewVivaApi.Controllers.Odata
             /*
             if (User.Identity.IsServiceUser())
                 return BadRequest();
-*/
+            */
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
@@ -135,84 +135,68 @@ namespace NewVivaApi.Controllers.Odata
         {
             try
             {
-                /*
-                // Check if the user is a service user and return early if true
-                if (model.IsServiceUser())
-                {
-                    return;
-                }
-
-                // Parse the JSON attributes and extract user information
-                
-                var jsonAttributes = JsonSerializer.Deserialize<JsonElement>(model.JsonAttributes);
-                var userName = jsonAttributes.GetProperty("ContactEmail").GetString();
-
-                // Check if the user already exists in the database
-                var existingUser = await _userManager.FindByEmailAsync(userName);
-                if (existingUser != null)
-                {
-                    // User already exists, no need to create again
-                    _logger.LogInformation($"User with email {userName} already exists.");
-                    return;
-                }
-
-                // Extract contact name and split it into first and last name
-                var contactName = jsonAttributes.GetProperty("Contact").GetString();
-                var names = contactName?.Split(' ') ?? new string[] { };
-
-                var firstName = names.FirstOrDefault() ?? "First Name";
-                var lastName = names.Length > 1 ? names[1] : "Last Name";
-
-                // Create a new RegisterSystemUserModel
-                var newSubcontractorUser = new RegisterSystemUserModel
-                {
-                    CompanyID = model.SubcontractorID,
-                    FirstName = firstName,
-                    LastName = lastName,
-                    UserName = userName,
-                    isSCTF = true
-                };
-
-                // Generate a password using predefined rules
-                var password = GeneratePassword();
-
-                newSubcontractorUser.Password = password;
-                newSubcontractorUser.ConfirmPassword = password;
-
-                try
-                {
-                    // Register the new user
-                    await newSubcontractorUser.RegisterAsync();
-                    _logger.LogInformation($"New subcontractor user {userName} registered successfully.");
-                }
-                catch (UserCreationException ex)
-                {
-                    _logger.LogError(ex, "Error occurred while creating user.");
-                    throw;
-                }*/
-                Console.WriteLine($"TODO: Register new user for subcontractor {model.SubcontractorId}");
-
-
-                // private string GeneratePassword()
+                // // Check if the user is a service user and return early if true
+                // if (model.IsServiceUser())
                 // {
-                //     // Example password generation (this could be enhanced)
-                //     var requirements = new PasswordGenerationService.PasswordRequirements
-                //     {
-                //         RequireNumber = true,
-                //         RequireSymbol = true,
-                //         MinimumLength = 10,
-                //         MaximumLength = 16
-                //     };
-
-                //     return PasswordGenerationService.GeneratePassword(requirements);
+                //     return;
                 // }
+
+                // // Parse the JSON attributes and extract user information
+
+                // var jsonAttributes = JsonSerializer.Deserialize<JsonElement>(model.JsonAttributes);
+                // var userName = jsonAttributes.GetProperty("ContactEmail").GetString();
+
+                // // Check if the user already exists in the database
+                // var existingUser = await _userManager.FindByEmailAsync(userName);
+                // if (existingUser != null)
+                // {
+                //     // User already exists, no need to create again
+                //     _logger.LogInformation($"User with email {userName} already exists.");
+                //     return;
+                // }
+
+                // // Extract contact name and split it into first and last name
+                // var contactName = jsonAttributes.GetProperty("Contact").GetString();
+                // var names = contactName?.Split(' ') ?? new string[] { };
+
+                // var firstName = names.FirstOrDefault() ?? "First Name";
+                // var lastName = names.Length > 1 ? names[1] : "Last Name";
+
+                // // Create a new RegisterSystemUserModel
+                // var newSubcontractorUser = new RegisterSystemUserModel
+                // {
+                //     CompanyID = model.SubcontractorID,
+                //     FirstName = firstName,
+                //     LastName = lastName,
+                //     UserName = userName,
+                //     isSCTF = true
+                // };
+
+                // // Generate a password using predefined rules
+                // var password = GeneratePassword();
+
+                // newSubcontractorUser.Password = password;
+                // newSubcontractorUser.ConfirmPassword = password;
+
+                // try
+                // {
+                //     // Register the new user
+                //     await newSubcontractorUser.RegisterAsync();
+                //     _logger.LogInformation($"New subcontractor user {userName} registered successfully.");
+                // }
+                // catch (UserCreationException ex)
+                // {
+                //     _logger.LogError(ex, "Error occurred while creating user.");
+                //     throw;
+                // }
+                Console.WriteLine($"TODO: Register new user for subcontractor {model.SubcontractorId}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error registering new subcontractor user: {ex.Message}");
             }
         }
-        
+
         [HttpPatch]
         public async Task<IActionResult> Patch(int key, [FromBody] SubcontractorsVw patch)
         {
@@ -249,7 +233,7 @@ namespace NewVivaApi.Controllers.Odata
             }
 
             var updatedViewModel = _mapper.Map<SubcontractorsVw>(dbModel);
-            RegisterNewSubcontractorUser(updatedViewModel); 
+            RegisterNewSubcontractorUser(updatedViewModel);
             return Updated(updatedViewModel);
         }
 
@@ -280,55 +264,5 @@ namespace NewVivaApi.Controllers.Odata
         }
 
 
-
-/*
-
-        private void RegisterNewSubcontractorUser(SubcontractorsVw model)
-        {
-            if (User.Identity.IsServiceUser())
-                return;
-
-            JObject attributes = JObject.Parse(model.JsonAttributes);
-            string userEmail = attributes["ContactEmail"]?.ToString();
-
-            if (string.IsNullOrEmpty(userEmail))
-                return;
-
-            var existingUser = _context.AspNetUsers.FirstOrDefault(u => u.Email == userEmail);
-            if (existingUser != null)
-                return;
-
-            string contactName = attributes["Contact"]?.ToString();
-            var names = contactName?.Split(' ') ?? Array.Empty<string>();
-
-            var registerModel = new RegisterSystemUserModel
-            {
-                CompanyID = model.SubcontractorID,
-                FirstName = names.FirstOrDefault() ?? "First",
-                LastName = names.Skip(1).FirstOrDefault() ?? "Last",
-                UserName = userEmail,
-                isSCTF = true
-            };
-
-            var password = PasswordGenerationService.GeneratePassword(new()
-            {
-                RequireNumber = true,
-                RequireSymbol = true,
-                MinimumLength = 10,
-                MaximumLength = 16
-            });
-
-            registerModel.Password = registerModel.ConfirmPassword = password;
-
-            try
-            {
-                registerModel.Register(User.Identity.GetUserName());
-            }
-            catch (UserCreationException ex)
-            {
-                throw;
-            }
-        }
-        */
     }
 }
