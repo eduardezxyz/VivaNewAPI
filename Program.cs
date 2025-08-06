@@ -22,7 +22,7 @@ builder.Services.AddControllers()
         .OrderBy()
         .Expand()
         .Count()
-        .SetMaxTop(1000)
+        .SetMaxTop(100)
         .AddRouteComponents("odata", GetEdmModel()));
 
 builder.Services.AddEndpointsApiExplorer();
@@ -51,14 +51,16 @@ static IEdmModel GetEdmModel()
 {
     var builder = new ODataConventionModelBuilder();
     
-    // Add your entity sets here based on your models
-    // Using the view models since they have clean structure
     builder.EntitySet<ProjectsVw>("Projects")
         .EntityType.HasKey(p => p.ProjectId);
+        
+    builder.EntitySet<PayAppsVw>("PayApps")
+        .EntityType.HasKey(p => p.PayAppId);
+
+    builder.EntitySet<SubcontractorsVw>("Subcontractors")
+        .EntityType.HasKey(s => s.SubcontractorId);
     
-    // You can add more entity sets as you convert other controllers
-    // builder.EntitySet<PayAppsVw>("PayApps").EntityType.HasKey(p => p.PayAppId);
     // builder.EntitySet<GeneralContractorsVw>("GeneralContractors").EntityType.HasKey(g => g.GeneralContractorId);
-    
+
     return builder.GetEdmModel();
 }

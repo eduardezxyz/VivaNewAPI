@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/NewVivaApi.csproj": {}
+    "/Users/scuer/Documents/VivaNewAPI/NewVivaApi.csproj": {}
   },
   "projects": {
-    "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/NewVivaApi.csproj": {
+    "/Users/scuer/Documents/VivaNewAPI/NewVivaApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/NewVivaApi.csproj",
+        "projectUniqueName": "/Users/scuer/Documents/VivaNewAPI/NewVivaApi.csproj",
         "projectName": "NewVivaApi",
-        "projectPath": "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/NewVivaApi.csproj",
-        "packagesPath": "/Users/scuser/.nuget/packages/",
-        "outputPath": "/Users/scuser/Documents/SteeleProjects/VivaNewAPI/obj/",
+        "projectPath": "/Users/scuer/Documents/VivaNewAPI/NewVivaApi.csproj",
+        "packagesPath": "/Users/scuer/.nuget/packages/",
+        "outputPath": "/Users/scuer/Documents/VivaNewAPI/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/Users/scuser/.nuget/NuGet/NuGet.Config"
+          "/Users/scuer/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
@@ -36,9 +36,9 @@
         "restoreAuditProperties": {
           "enableAudit": "true",
           "auditLevel": "low",
-          "auditMode": "all"
+          "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.100"
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "net9.0": {
@@ -92,7 +92,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.100/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.303/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
