@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.OData.Results;
 using Microsoft.OData;
 using NewVivaApi.Data;
 using NewVivaApi.Models;
+using System.Text.Json;
+using AutoMapper;
 
 namespace NewVivaApi.Controllers.Odata
 {
@@ -21,12 +23,16 @@ namespace NewVivaApi.Controllers.Odata
     public class SubcontractorsController : ODataController
     {
         private readonly AppDbContext _context;
-        //private readonly MapperInstance _mapper;
+        private readonly IMapper _mapper;
 
-        public SubcontractorsController(AppDbContext context)
+        // private readonly IFinancialSecurityService _financialSecurityService;
+        // private readonly IEmailService _emailService;
+        // private readonly IUserManager _userManager;
+
+        public SubcontractorsController(AppDbContext context, IMapper mapper)
         {
             _context = context;
-            //_mapper = mapper;
+            _mapper = mapper;
         }
 
         /*
@@ -85,135 +91,228 @@ namespace NewVivaApi.Controllers.Odata
             return Ok(model);
         }
 
-/*
+
         public async Task<IActionResult> Post([FromBody] SubcontractorsVw model)
         {
+            /*
             if (User.Identity.IsServiceUser())
                 return BadRequest();
-
+*/
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var dbModel = new Subcontractor();
-            //_mapper.IMapper.Map(model, dbModel);
+            var dbModel = _mapper.Map<Subcontractor>(model);
 
-            dbModel.JsonAttributes = FinancialSecurityService.protectJsonAttributes(model.JsonAttributes);
-            dbModel.CreateDT = dbModel.LastUpdateDT = DateTime.UtcNow;
-            dbModel.LastUpdateUser = dbModel.CreatedByUser = User.Identity.Name;
+            //dbModel.JsonAttributes = FinancialSecurityService.protectJsonAttributes(model.JsonAttributes);
+            dbModel.CreateDt = DateTime.UtcNow;
+            dbModel.LastUpdateDt = DateTime.UtcNow;
+            dbModel.LastUpdateUser = "deki@steeleconsult.com";
+            dbModel.CreatedByUser = "deki@steeleconsult.com";
 
             _context.Subcontractors.Add(dbModel);
+
             try
             {
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateException ex)
             {
-                return BadRequest(ex.Message);
+                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
             }
 
-            model.SubcontractorID = dbModel.SubcontractorID;
+            model.SubcontractorId = dbModel.SubcontractorId;
+            var resultModel = _mapper.Map<SubcontractorsVw>(dbModel);
 
-            var es = new EmailService();
-            es.sendAdminEmailNewSubcontractor(User.Identity.GetUserId(), model.SubcontractorID);
+            //var es = new EmailService();
+            //es.sendAdminEmailNewSubcontractor(User.Identity.GetUserId(), model.SubcontractorID);
 
-            RegisterNewSubcontractorUser(model);
-            return Created(model);
+            await RegisterNewSubcontractorUser(resultModel);
+            return Created(resultModel);
         }
 
-        [HttpPatch]
-        public async Task<IActionResult> Patch([FromRoute] int key, [FromBody] Delta<SubcontractorsVw> patch)
+        public async Task RegisterNewSubcontractorUser(SubcontractorsVw model)
         {
-            if (User.Identity.IsServiceUser())
-                return BadRequest();
-
-            var dbModel = _context.Subcontractors.FirstOrDefault(x => x.SubcontractorID == key && x.DeleteDT == null);
-            if (dbModel == null)
-                return NotFound();
-
-            var model = new Subcontractors_vw();
-            //_mapper.IMapper.Map(dbModel, model);
-            patch.Patch(model);
-            //_mapper.IMapper.Map(model, dbModel);
-
-            dbModel.JsonAttributes = FinancialSecurityService.protectJsonAttributes(model.JsonAttributes);
-            dbModel.LastUpdateDT = DateTime.UtcNow;
-            dbModel.LastUpdateUser = User.Identity.Name;
-
-            var validationErrors = dbModel.Validate();
-            if (validationErrors.Any())
-            {
-                foreach (var error in validationErrors)
-                    ModelState.AddModelError(string.Empty, error);
-                return BadRequest(ModelState);
-            }
-
-            await _context.SaveChangesAsync();
-            model = _context.Subcontractors_vw.FirstOrDefault(x => x.SubcontractorID == key);
-            RegisterNewSubcontractorUser(model);
-            return Updated(model);
-        }
-
-        public async Task<IActionResult> Delete([FromRoute] int key)
-        {
-            if (User.Identity.IsServiceUser())
-                return BadRequest();
-
-            var model = _context.Subcontractors.FirstOrDefault(x => x.SubcontractorID == key && x.DeleteDT == null);
-            if (model == null)
-                return NotFound();
-
-            model.DeleteDT = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private void RegisterNewSubcontractorUser(SubcontractorsVw model)
-        {
-            if (User.Identity.IsServiceUser())
-                return;
-
-            JObject attributes = JObject.Parse(model.JsonAttributes);
-            string userEmail = attributes["ContactEmail"]?.ToString();
-
-            if (string.IsNullOrEmpty(userEmail))
-                return;
-
-            var existingUser = _context.AspNetUsers.FirstOrDefault(u => u.Email == userEmail);
-            if (existingUser != null)
-                return;
-
-            string contactName = attributes["Contact"]?.ToString();
-            var names = contactName?.Split(' ') ?? Array.Empty<string>();
-
-            var registerModel = new RegisterSystemUserModel
-            {
-                CompanyID = model.SubcontractorID,
-                FirstName = names.FirstOrDefault() ?? "First",
-                LastName = names.Skip(1).FirstOrDefault() ?? "Last",
-                UserName = userEmail,
-                isSCTF = true
-            };
-
-            var password = PasswordGenerationService.GeneratePassword(new()
-            {
-                RequireNumber = true,
-                RequireSymbol = true,
-                MinimumLength = 10,
-                MaximumLength = 16
-            });
-
-            registerModel.Password = registerModel.ConfirmPassword = password;
-
             try
             {
-                registerModel.Register(User.Identity.GetUserName());
+                /*
+                // Check if the user is a service user and return early if true
+                if (model.IsServiceUser())
+                {
+                    return;
+                }
+
+                // Parse the JSON attributes and extract user information
+                
+                var jsonAttributes = JsonSerializer.Deserialize<JsonElement>(model.JsonAttributes);
+                var userName = jsonAttributes.GetProperty("ContactEmail").GetString();
+
+                // Check if the user already exists in the database
+                var existingUser = await _userManager.FindByEmailAsync(userName);
+                if (existingUser != null)
+                {
+                    // User already exists, no need to create again
+                    _logger.LogInformation($"User with email {userName} already exists.");
+                    return;
+                }
+
+                // Extract contact name and split it into first and last name
+                var contactName = jsonAttributes.GetProperty("Contact").GetString();
+                var names = contactName?.Split(' ') ?? new string[] { };
+
+                var firstName = names.FirstOrDefault() ?? "First Name";
+                var lastName = names.Length > 1 ? names[1] : "Last Name";
+
+                // Create a new RegisterSystemUserModel
+                var newSubcontractorUser = new RegisterSystemUserModel
+                {
+                    CompanyID = model.SubcontractorID,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    UserName = userName,
+                    isSCTF = true
+                };
+
+                // Generate a password using predefined rules
+                var password = GeneratePassword();
+
+                newSubcontractorUser.Password = password;
+                newSubcontractorUser.ConfirmPassword = password;
+
+                try
+                {
+                    // Register the new user
+                    await newSubcontractorUser.RegisterAsync();
+                    _logger.LogInformation($"New subcontractor user {userName} registered successfully.");
+                }
+                catch (UserCreationException ex)
+                {
+                    _logger.LogError(ex, "Error occurred while creating user.");
+                    throw;
+                }*/
+                Console.WriteLine($"TODO: Register new user for subcontractor {model.SubcontractorId}");
+
+
+                // private string GeneratePassword()
+                // {
+                //     // Example password generation (this could be enhanced)
+                //     var requirements = new PasswordGenerationService.PasswordRequirements
+                //     {
+                //         RequireNumber = true,
+                //         RequireSymbol = true,
+                //         MinimumLength = 10,
+                //         MaximumLength = 16
+                //     };
+
+                //     return PasswordGenerationService.GeneratePassword(requirements);
+                // }
             }
-            catch (UserCreationException ex)
+            catch (Exception ex)
             {
-                throw;
+                Console.WriteLine($"Error registering new subcontractor user: {ex.Message}");
             }
+
+
+
+
+
+
+            /*
+                                            [HttpPatch]
+                                            public async Task<IActionResult> Patch([FromRoute] int key, [FromBody] Delta<SubcontractorsVw> patch)
+                                            {
+                                                if (User.Identity.IsServiceUser())
+                                                    return BadRequest();
+
+                                                var dbModel = _context.Subcontractors.FirstOrDefault(x => x.SubcontractorID == key && x.DeleteDT == null);
+                                                if (dbModel == null)
+                                                    return NotFound();
+
+                                                var model = new Subcontractors_vw();
+                                                //_mapper.IMapper.Map(dbModel, model);
+                                                patch.Patch(model);
+                                                //_mapper.IMapper.Map(model, dbModel);
+
+                                                dbModel.JsonAttributes = FinancialSecurityService.protectJsonAttributes(model.JsonAttributes);
+                                                dbModel.LastUpdateDT = DateTime.UtcNow;
+                                                dbModel.LastUpdateUser = User.Identity.Name;
+
+                                                var validationErrors = dbModel.Validate();
+                                                if (validationErrors.Any())
+                                                {
+                                                    foreach (var error in validationErrors)
+                                                        ModelState.AddModelError(string.Empty, error);
+                                                    return BadRequest(ModelState);
+                                                }
+
+                                                await _context.SaveChangesAsync();
+                                                model = _context.Subcontractors_vw.FirstOrDefault(x => x.SubcontractorID == key);
+                                                RegisterNewSubcontractorUser(model);
+                                                return Updated(model);
+                                            }
+
+                                            public async Task<IActionResult> Delete([FromRoute] int key)
+                                            {
+                                                if (User.Identity.IsServiceUser())
+                                                    return BadRequest();
+
+                                                var model = _context.Subcontractors.FirstOrDefault(x => x.SubcontractorID == key && x.DeleteDT == null);
+                                                if (model == null)
+                                                    return NotFound();
+
+                                                model.DeleteDT = DateTime.UtcNow;
+                                                await _context.SaveChangesAsync();
+
+                                                return NoContent();
+                                            }
+
+                                            private void RegisterNewSubcontractorUser(SubcontractorsVw model)
+                                            {
+                                                if (User.Identity.IsServiceUser())
+                                                    return;
+
+                                                JObject attributes = JObject.Parse(model.JsonAttributes);
+                                                string userEmail = attributes["ContactEmail"]?.ToString();
+
+                                                if (string.IsNullOrEmpty(userEmail))
+                                                    return;
+
+                                                var existingUser = _context.AspNetUsers.FirstOrDefault(u => u.Email == userEmail);
+                                                if (existingUser != null)
+                                                    return;
+
+                                                string contactName = attributes["Contact"]?.ToString();
+                                                var names = contactName?.Split(' ') ?? Array.Empty<string>();
+
+                                                var registerModel = new RegisterSystemUserModel
+                                                {
+                                                    CompanyID = model.SubcontractorID,
+                                                    FirstName = names.FirstOrDefault() ?? "First",
+                                                    LastName = names.Skip(1).FirstOrDefault() ?? "Last",
+                                                    UserName = userEmail,
+                                                    isSCTF = true
+                                                };
+
+                                                var password = PasswordGenerationService.GeneratePassword(new()
+                                                {
+                                                    RequireNumber = true,
+                                                    RequireSymbol = true,
+                                                    MinimumLength = 10,
+                                                    MaximumLength = 16
+                                                });
+
+                                                registerModel.Password = registerModel.ConfirmPassword = password;
+
+                                                try
+                                                {
+                                                    registerModel.Register(User.Identity.GetUserName());
+                                                }
+                                                catch (UserCreationException ex)
+                                                {
+                                                    throw;
+                                                }
+                                            }
+                                            */
         }
-        */
     }
 }

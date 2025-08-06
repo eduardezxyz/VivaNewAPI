@@ -10,6 +10,7 @@ public class AutoMapperConfig : Profile
     {
         // Add your mappings here
         CreateMap<ProjectsVw, Project>().ReverseMap();
+        CreateMap<SubcontractorsVw, Subcontractor>().ReverseMap();
         // Example: CreateMap<Source, Destination>();
     }
 }
