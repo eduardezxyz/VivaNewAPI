@@ -1,46 +1,67 @@
+using Microsoft.AspNetCore.OData;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.OData.Edm;
+using Microsoft.OData.ModelBuilder;
+using NewVivaApi.Data;
+using NewVivaApi.Models;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.OData.Routing;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    })
+    .AddOData(options => options
+        .Select()
+        .Filter()
+        .OrderBy()
+        .Expand()
+        .Count()
+        .SetMaxTop(100)
+        .AddRouteComponents("odata", GetEdmModel()));
 
-var app = builder.Build();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.AddAutoMapper(typeof(AutoMapperConfig));
+
+// Add DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Configure the HTTP request pipeline.
+var app = builder.Build();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.UseAuthorization();
+app.MapControllers();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+// EDM Model for OData
+static IEdmModel GetEdmModel()
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    var builder = new ODataConventionModelBuilder();
+    
+    builder.EntitySet<ProjectsVw>("Projects")
+        .EntityType.HasKey(p => p.ProjectId);
+        
+    builder.EntitySet<PayAppsVw>("PayApps")
+        .EntityType.HasKey(p => p.PayAppId);
+
+    builder.EntitySet<SubcontractorsVw>("Subcontractors")
+        .EntityType.HasKey(s => s.SubcontractorId);
+    
+    // builder.EntitySet<GeneralContractorsVw>("GeneralContractors").EntityType.HasKey(g => g.GeneralContractorId);
+
+    return builder.GetEdmModel();
 }

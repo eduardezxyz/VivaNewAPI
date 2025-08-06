@@ -1,0 +1,19 @@
+# Build output folders
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio temporary files
+.vs/
+
+# NuGet packages
+*.nupkg
+packages/
+
+# Others
+*.log
