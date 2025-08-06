@@ -91,7 +91,7 @@ namespace NewVivaApi.Controllers.Odata
             return Ok(model);
         }
 
-
+        [HttpPost]
         public async Task<IActionResult> Post([FromBody] SubcontractorsVw model)
         {
             /*
@@ -211,108 +211,124 @@ namespace NewVivaApi.Controllers.Odata
             {
                 Console.WriteLine($"Error registering new subcontractor user: {ex.Message}");
             }
-
-
-
-
-
-
-            /*
-                                            [HttpPatch]
-                                            public async Task<IActionResult> Patch([FromRoute] int key, [FromBody] Delta<SubcontractorsVw> patch)
-                                            {
-                                                if (User.Identity.IsServiceUser())
-                                                    return BadRequest();
-
-                                                var dbModel = _context.Subcontractors.FirstOrDefault(x => x.SubcontractorID == key && x.DeleteDT == null);
-                                                if (dbModel == null)
-                                                    return NotFound();
-
-                                                var model = new Subcontractors_vw();
-                                                //_mapper.IMapper.Map(dbModel, model);
-                                                patch.Patch(model);
-                                                //_mapper.IMapper.Map(model, dbModel);
-
-                                                dbModel.JsonAttributes = FinancialSecurityService.protectJsonAttributes(model.JsonAttributes);
-                                                dbModel.LastUpdateDT = DateTime.UtcNow;
-                                                dbModel.LastUpdateUser = User.Identity.Name;
-
-                                                var validationErrors = dbModel.Validate();
-                                                if (validationErrors.Any())
-                                                {
-                                                    foreach (var error in validationErrors)
-                                                        ModelState.AddModelError(string.Empty, error);
-                                                    return BadRequest(ModelState);
-                                                }
-
-                                                await _context.SaveChangesAsync();
-                                                model = _context.Subcontractors_vw.FirstOrDefault(x => x.SubcontractorID == key);
-                                                RegisterNewSubcontractorUser(model);
-                                                return Updated(model);
-                                            }
-
-                                            public async Task<IActionResult> Delete([FromRoute] int key)
-                                            {
-                                                if (User.Identity.IsServiceUser())
-                                                    return BadRequest();
-
-                                                var model = _context.Subcontractors.FirstOrDefault(x => x.SubcontractorID == key && x.DeleteDT == null);
-                                                if (model == null)
-                                                    return NotFound();
-
-                                                model.DeleteDT = DateTime.UtcNow;
-                                                await _context.SaveChangesAsync();
-
-                                                return NoContent();
-                                            }
-
-                                            private void RegisterNewSubcontractorUser(SubcontractorsVw model)
-                                            {
-                                                if (User.Identity.IsServiceUser())
-                                                    return;
-
-                                                JObject attributes = JObject.Parse(model.JsonAttributes);
-                                                string userEmail = attributes["ContactEmail"]?.ToString();
-
-                                                if (string.IsNullOrEmpty(userEmail))
-                                                    return;
-
-                                                var existingUser = _context.AspNetUsers.FirstOrDefault(u => u.Email == userEmail);
-                                                if (existingUser != null)
-                                                    return;
-
-                                                string contactName = attributes["Contact"]?.ToString();
-                                                var names = contactName?.Split(' ') ?? Array.Empty<string>();
-
-                                                var registerModel = new RegisterSystemUserModel
-                                                {
-                                                    CompanyID = model.SubcontractorID,
-                                                    FirstName = names.FirstOrDefault() ?? "First",
-                                                    LastName = names.Skip(1).FirstOrDefault() ?? "Last",
-                                                    UserName = userEmail,
-                                                    isSCTF = true
-                                                };
-
-                                                var password = PasswordGenerationService.GeneratePassword(new()
-                                                {
-                                                    RequireNumber = true,
-                                                    RequireSymbol = true,
-                                                    MinimumLength = 10,
-                                                    MaximumLength = 16
-                                                });
-
-                                                registerModel.Password = registerModel.ConfirmPassword = password;
-
-                                                try
-                                                {
-                                                    registerModel.Register(User.Identity.GetUserName());
-                                                }
-                                                catch (UserCreationException ex)
-                                                {
-                                                    throw;
-                                                }
-                                            }
-                                            */
         }
+        
+        [HttpPatch]
+        public async Task<IActionResult> Patch(int key, [FromBody] SubcontractorsVw patch)
+        {
+            // if (User.Identity.IsServiceUser())
+            //     return BadRequest();
+
+            var dbModel = await _context.Subcontractors.FindAsync(key);
+            if (dbModel == null)
+                return NotFound();
+
+            _mapper.Map(patch, dbModel);
+            dbModel.SubcontractorId = key; //manually clear the ID to avoid issues with OData patching
+
+            //dbModel.JsonAttributes = FinancialSecurityService.protectJsonAttributes(model.JsonAttributes);
+            dbModel.LastUpdateDt = DateTime.UtcNow;
+            dbModel.LastUpdateUser = "deki@steeleconsult.com"; //temp
+
+            // var validationErrors = dbModel.Validate();
+            // if (validationErrors.Any())
+            // {
+            //     foreach (var error in validationErrors)
+            //         ModelState.AddModelError(string.Empty, error);
+            //     return BadRequest(ModelState);
+            // }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+            }
+
+            var updatedViewModel = _mapper.Map<SubcontractorsVw>(dbModel);
+            RegisterNewSubcontractorUser(updatedViewModel); 
+            return Updated(updatedViewModel);
+        }
+
+        public async Task<IActionResult> Delete([FromRoute] int key)
+        {
+            // if (User.Identity.IsServiceUser())
+            //     return BadRequest();
+
+            var model = await _context.Subcontractors.FindAsync(key);
+            if (model == null)
+                return NotFound();
+
+            //_context.Subcontractors.Remove(model);
+            model.DeleteDt = DateTime.UtcNow;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+
+            }
+            catch (DbUpdateException ex)
+            {
+                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+            }
+
+            return NoContent();
+        }
+
+
+
+/*
+
+        private void RegisterNewSubcontractorUser(SubcontractorsVw model)
+        {
+            if (User.Identity.IsServiceUser())
+                return;
+
+            JObject attributes = JObject.Parse(model.JsonAttributes);
+            string userEmail = attributes["ContactEmail"]?.ToString();
+
+            if (string.IsNullOrEmpty(userEmail))
+                return;
+
+            var existingUser = _context.AspNetUsers.FirstOrDefault(u => u.Email == userEmail);
+            if (existingUser != null)
+                return;
+
+            string contactName = attributes["Contact"]?.ToString();
+            var names = contactName?.Split(' ') ?? Array.Empty<string>();
+
+            var registerModel = new RegisterSystemUserModel
+            {
+                CompanyID = model.SubcontractorID,
+                FirstName = names.FirstOrDefault() ?? "First",
+                LastName = names.Skip(1).FirstOrDefault() ?? "Last",
+                UserName = userEmail,
+                isSCTF = true
+            };
+
+            var password = PasswordGenerationService.GeneratePassword(new()
+            {
+                RequireNumber = true,
+                RequireSymbol = true,
+                MinimumLength = 10,
+                MaximumLength = 16
+            });
+
+            registerModel.Password = registerModel.ConfirmPassword = password;
+
+            try
+            {
+                registerModel.Register(User.Identity.GetUserName());
+            }
+            catch (UserCreationException ex)
+            {
+                throw;
+            }
+        }
+        */
     }
 }
