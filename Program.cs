@@ -63,7 +63,9 @@ static IEdmModel GetEdmModel()
     
     builder.EntitySet<GeneralContractorsVw>("GeneralContractors")
         .EntityType.HasKey(g => g.GeneralContractorId);
-    // builder.EntitySet<GeneralContractorsVw>("GeneralContractors").EntityType.HasKey(g => g.GeneralContractorId);
+
+    builder.EntitySet<PayAppHistoryVw>("PayAppHistory")
+        .EntityType.HasKey(h => h.PayAppHistoryId);
 
     return builder.GetEdmModel();
 }
