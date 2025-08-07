@@ -70,5 +70,8 @@ static IEdmModel GetEdmModel()
     builder.EntitySet<PayAppHistoryVw>("PayAppHistory")
         .EntityType.HasKey(h => h.PayAppHistoryId);
 
+    builder.EntitySet<UserProfilesVw>("UserProfiles")
+        .EntityType.HasKey(up => up.UserId);
+
     return builder.GetEdmModel();
 }
