@@ -149,75 +149,22 @@ namespace NewVivaApi.Controllers.Odata
             return Created(resultModel);
         }
 
-        //         // PATCH - Fully implemented
-        //         [HttpPatch("{key}")]
-        //         public async Task<IActionResult> Patch(int key, [FromBody] PayAppHistoryVw patch)
-        //         {
-        //             // Temporarily comment out auth check
-        //             /*
-        //             if (User.Identity.IsServiceUser())
-        //             {
-        //                 return BadRequest();
-        //             }
-        //             */
 
-        //             var dbModel = await _context.PayAppHistories.FindAsync(key);
-        //             if (dbModel == null)
-        //                 return NotFound();
+        [HttpPatch]
+        public async Task<IActionResult> Patch(int key, [FromBody] PayAppHistoryVw patch)
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented, "PATCH operation is not implemented.");
 
-        //             // Map the patch data to the database model
-        //             _mapper.Map(patch, dbModel);
+        }
 
-        //             // Update audit fields
-        //             dbModel.LastUpdateDt = DateTimeOffset.UtcNow;
-        //             dbModel.LastUpdateUser = "system@api.com";
 
-        //             try
-        //             {
-        //                 await _context.SaveChangesAsync();
-        //             }
-        //             catch (DbUpdateException ex)
-        //             {
-        //                 var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-        //                 return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
-        //             }
+        [HttpDelete("{key}")]
+        public async Task<IActionResult> Delete(int key)
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented, "DELETE operation is not implemented.");
 
-        //             var updatedViewModel = _mapper.Map<PayAppHistoryVw>(dbModel);
-        //             return Updated(updatedViewModel);
-        //         }
+        }
 
-        //         // DELETE - Fully implemented (hard delete since no DeleteDt field)
-        //         [HttpDelete("{key}")]
-        //         public async Task<IActionResult> Delete(int key)
-        // {
-        //     // Temporarily comment out auth check
-        //     /*
-        //     if (User.Identity.IsServiceUser())
-        //     {
-        //         return BadRequest();
-        //     }
-        //     */
-
-        //     var model = await _context.PayAppHistories.FindAsync(key);
-        //     if (model == null)
-        //         return NotFound();
-
-        //     // Hard delete since PayAppHistory doesn't have DeleteDt field
-        //     _context.PayAppHistories.Remove(model);
-
-        //     try
-        //     {
-        //         await _context.SaveChangesAsync();
-        //     }
-        //     catch (DbUpdateException ex)
-        //     {
-        //         var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-        //         return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
-        //     }
-
-        //     return NoContent();
-        // }
-
-        //     
+            
     }
 }
