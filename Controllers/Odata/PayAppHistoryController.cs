@@ -103,52 +103,51 @@ namespace NewVivaApi.Controllers.Odata
             return Ok(model);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> Post([FromBody] PayAppHistoryVw model)
+        {
+            //auth check
+            /*
+            if (User.Identity.IsServiceUser())
+            {
+                return BadRequest();
+            }
+            */
 
-        //         public async Task<IActionResult> Post([FromBody] PayAppHistoryVw model)
-        //         {
-        //             // Temporarily comment out auth check
-        //             /*
-        //             if (User.Identity.IsServiceUser())
-        //             {
-        //                 return BadRequest();
-        //             }
-        //             */
+            if (!ModelState.IsValid){
+                return BadRequest(ModelState);
+            }
 
-        //             if (!ModelState.IsValid)
-        //             {
-        //                 return BadRequest(ModelState);
-        //             }
+            // Validate that the PayApp exists
+            var payAppExists = await _context.PayApps
+                .AnyAsync(pa => pa.PayAppId == model.PayAppId);
 
-        //             // Validate that the PayApp exists
-        //             var payAppExists = await _context.PayApps
-        //                 .AnyAsync(pa => pa.PayAppId == model.PayAppId);
+            if (!payAppExists)
+            {
+                return BadRequest($"PayApp with ID {model.PayAppId} does not exist.");
+            }
 
-        //             if (!payAppExists)
-        //             {
-        //                 return BadRequest($"PayApp with ID {model.PayAppId} does not exist.");
-        //             }
+            var dbModel = _mapper.Map<PayAppHistory>(model);
 
-        //             var dbModel = _mapper.Map<PayAppHistory>(model);
+            dbModel.CreateDt = DateTimeOffset.UtcNow;
+            dbModel.LastUpdateDt = DateTimeOffset.UtcNow;
+            dbModel.LastUpdateUser = "deki@steeleconsult.com";
 
-        //             dbModel.CreateDt = DateTimeOffset.UtcNow;
-        //             dbModel.LastUpdateDt = DateTimeOffset.UtcNow;
-        //             dbModel.LastUpdateUser = "system@api.com";
+            _context.PayAppHistories.Add(dbModel);
 
-        //             _context.PayAppHistories.Add(dbModel);
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+            }
 
-        //             try
-        //             {
-        //                 await _context.SaveChangesAsync();
-        //             }
-        //             catch (DbUpdateException ex)
-        //             {
-        //                 var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-        //                 return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
-        //             }
-
-        //             var resultModel = _mapper.Map<PayAppHistoryVw>(dbModel);
-        //             return Created(resultModel);
-        //         }
+            var resultModel = _mapper.Map<PayAppHistoryVw>(dbModel);
+            return Created(resultModel);
+        }
 
         //         // PATCH - Fully implemented
         //         [HttpPatch("{key}")]
