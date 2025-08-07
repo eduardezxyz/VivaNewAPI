@@ -106,58 +106,74 @@ namespace NewVivaApi.Controllers.Odata
             return Created(model);
         }
 
-        /*
-
         [HttpPatch]
-        public async Task<IActionResult> Patch([FromRoute] int key, [FromBody] Microsoft.AspNetCore.OData.Deltas.Delta<GeneralContractorsVw> patch)
+        public async Task<IActionResult> Patch(int key, [FromBody] GeneralContractorsVw patch)
         {
-            var dbEntity = await _context.GeneralContractors
-                .FirstOrDefaultAsync(x => x.GeneralContractorId == key && x.DeleteDT == null);
+            var dbEntity = await _context.GeneralContractors.FindAsync(key);
 
             if (dbEntity == null)
                 return NotFound();
 
-            var originalCreatedBy = dbEntity.CreatedByUser;
-            var model = new GeneralContractorsVw();
-            _mapper.IMapper.Map(dbEntity, model);
+            _mapper.Map(patch, dbEntity);
+            dbEntity.GeneralContractorId = key;
 
-            patch.Patch(model);
-            _mapper.IMapper.Map(model, dbEntity);
-
-            dbEntity.JsonAttributes = FinancialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
-            dbEntity.LastUpdateDT = System.DateTime.UtcNow;
-            dbEntity.LastUpdateUser = User.Identity.Name;
-            dbEntity.LogoImage = model.LogoImage;
-            dbEntity.DomainName = model.DomainName;
-            dbEntity.CreatedByUser = originalCreatedBy;
+            //dbEntity.JsonAttributes = FinancialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
+            dbEntity.LastUpdateDt = System.DateTime.UtcNow;
+            dbEntity.LastUpdateUser = "deki@steeleconsult.com";
+            dbEntity.CreatedByUser = "deki@steeleconsult.com";
 
             if (!TryValidateModel(dbEntity))
                 return BadRequest(ModelState);
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+            }
 
-            var refreshed = await _context.GeneralContractorsVw
-                .FirstOrDefaultAsync(x => x.GeneralContractorId == key);
+
+            var refreshed = await _context.GeneralContractors.FindAsync(key);
 
             //await _registrationService.RegisterNewGeneralContractorAsync(refreshed);
 
             return Updated(refreshed);
         }
 
+
         [HttpDelete]
         public async Task<IActionResult> Delete([FromRoute] int key)
         {
-            var dbEntity = await _context.GeneralContractors
-                .FirstOrDefaultAsync(x => x.GeneralContractorId == key && x.DeleteDT == null);
+            var dbEntity = await _context.GeneralContractors.FindAsync(key);
 
             if (dbEntity == null)
+            {
+                Console.WriteLine("Entity not found for deletion.");
+                Console.WriteLine($"Key: {key}");
                 return NotFound();
+            }
 
-            dbEntity.DeleteDT = System.DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            dbEntity.DeleteDt = DateTime.UtcNow;
+
+            try
+            {
+                int changes = await _context.SaveChangesAsync();
+                if (changes == 0)
+                {
+                    return BadRequest("No changes were made to the database.");
+                }
+            }
+            catch (DbUpdateException ex)
+            {
+                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+            }
 
             return NoContent();
         }
-        */
+
     }
 }
