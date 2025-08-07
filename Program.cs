@@ -60,6 +60,9 @@ static IEdmModel GetEdmModel()
 
     builder.EntitySet<SubcontractorsVw>("Subcontractors")
         .EntityType.HasKey(s => s.SubcontractorId);
+
+    builder.EntitySet<SubcontractorProjectsVw>("SubcontractorProjects")
+        .EntityType.HasKey(sp => sp.SubcontractorProjectId);
     
     builder.EntitySet<GeneralContractorsVw>("GeneralContractors")
         .EntityType.HasKey(g => g.GeneralContractorId);

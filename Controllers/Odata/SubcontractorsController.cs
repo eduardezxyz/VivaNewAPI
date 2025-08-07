@@ -80,7 +80,6 @@ namespace NewVivaApi.Controllers.Odata
             return Ok(model);
         }
 
-
         [EnableQuery]
         public ActionResult<SubcontractorsVw> Get([FromRoute] int key)
         {
