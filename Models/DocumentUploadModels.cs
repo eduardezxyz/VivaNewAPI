@@ -37,7 +37,7 @@ namespace NewVivaApi.Models
 
         public S3Upload(S3UploadRequest uploadObj, string accessKey, string secretKey)
         {
-            this._uploadObject = uploadObj;
+            _uploadObject = uploadObj;
             _client = new AmazonS3Client(accessKey, secretKey, RegionEndpoint.USWest2);
         }
 
