@@ -73,5 +73,11 @@ static IEdmModel GetEdmModel()
     builder.EntitySet<UserProfilesVw>("UserProfiles")
         .EntityType.HasKey(up => up.UserId);
 
+    builder.EntitySet<DocumentsVw>("Documents")
+        .EntityType.HasKey(d => d.DocumentId);
+
+    builder.EntitySet<UserProfilesVw>("UserProfiles")
+        .EntityType.HasKey(up => up.UserId);
+
     return builder.GetEdmModel();
 }
