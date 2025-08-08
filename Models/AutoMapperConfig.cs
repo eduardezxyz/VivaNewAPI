@@ -16,6 +16,7 @@ public class AutoMapperConfig : Profile
         CreateMap<PayAppHistoryVw, PayAppHistory>().ReverseMap();
         CreateMap<SubcontractorProjectsVw, SubcontractorProject>().ReverseMap();
         CreateMap<UserProfilesVw, UserProfile>().ReverseMap();
+        CreateMap<DocumentsVw, Document>().ReverseMap();
     }
 }
 
