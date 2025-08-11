@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.AspNetCore.OData.Routing.Controllers;
 using Microsoft.EntityFrameworkCore;
-using NewVivaApi.Models;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
@@ -12,28 +11,30 @@ using Microsoft.AspNetCore.OData.Deltas;
 using Microsoft.AspNetCore.OData.Formatter;
 using Microsoft.AspNetCore.OData.Results;
 using Microsoft.OData;
+using AutoMapper;
 using NewVivaApi.Data;
 using NewVivaApi.Models;
+using Microsoft.Extensions.Logging;
 
-namespace NewVivaApi.Controllers
+namespace NewVivaApi.Controllers.OData
 {
-    // Remove [Authorize] for now - we'll add it back once we implement auth
     // [Authorize]
     public class PayAppsController : ODataController
     {
         private readonly AppDbContext _context;
-        // private readonly IMapper _mapper;
+        private readonly IMapper _mapper;
         // private readonly IFinancialSecurityService _financialSecurityService;
         // private readonly IPayAppPaymentService _payAppPaymentService;
         // private readonly IEmailService _emailService;
         // private readonly IWebHookService _webHookService;
+        private readonly ILogger<PayAppsController> _logger;
 
-        public PayAppsController(AppDbContext context)
+        public PayAppsController(AppDbContext context, ILogger<PayAppsController> logger, IMapper mapper /*, IFinancialSecurityService financialSecurityService */)
         {
             _context = context;
-            // _mapper = mapper;
+            _mapper = mapper;
             // _financialSecurityService = financialSecurityService;
-            // etc.
+            _logger = logger;
         }
 
         private IQueryable<PayAppsVw> GetSecureModel()
@@ -75,6 +76,7 @@ namespace NewVivaApi.Controllers
             return _context.PayAppsVws;
         }
 
+
         [EnableQuery]
         public ActionResult<PayAppsVw> Get()
         {
@@ -92,6 +94,7 @@ namespace NewVivaApi.Controllers
 
             return Ok(model);
         }
+
 
         [EnableQuery]
         public ActionResult<PayAppsVw> Get([FromRoute] int key)
@@ -111,10 +114,28 @@ namespace NewVivaApi.Controllers
             return Ok(model);
         }
 
-
-        //POST does not work because of some complication with PayAppHistory
+        [HttpPost]
         public async Task<IActionResult> Post([FromBody] PayAppsVw model)
-        {
+        {   
+
+            _logger.LogInformation("POST method called");
+            
+            if (model != null)
+            {
+                _logger.LogInformation("Model received: PayAppId={PayAppId}, SubcontractorProjectId={SubcontractorProjectId}, StatusId={StatusId}, RequestedAmount={RequestedAmount}", 
+                    model.PayAppId, model.SubcontractorProjectId, model.StatusId, model.RequestedAmount);
+            }
+            
+            _logger.LogInformation("ModelState.IsValid: {IsValid}", ModelState.IsValid);
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("ModelState errors:");
+                foreach (var error in ModelState)
+                {
+                    _logger.LogWarning("Key: {Key}, Errors: {Errors}", error.Key, string.Join(", ", error.Value.Errors.Select(e => e.ErrorMessage)));
+                }
+            }
+
             //auth checks
             /*
             if (User.Identity.IsServiceUser())
@@ -128,85 +149,93 @@ namespace NewVivaApi.Controllers
             }
             */
 
+            if (model == null)
+            {
+                return BadRequest("PayApp model is required");
+            }
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            // Validate that the SubcontractorProject exists
+            // Verify the SubcontractorProject exists
             var subcontractorProjectExists = await _context.SubcontractorProjects
                 .AnyAsync(sp => sp.SubcontractorProjectId == model.SubcontractorProjectId);
-
+            
             if (!subcontractorProjectExists)
             {
-                return BadRequest($"SubcontractorProject with ID {model.SubcontractorProjectId} does not exist.");
+                return BadRequest($"SubcontractorProject with ID {model.SubcontractorProjectId} does not exist");
             }
 
-            var databaseModel = new PayApp
-            {
-                VivaPayAppId = model.VivaPayAppId,
-                SubcontractorProjectId = model.SubcontractorProjectId,
-                StatusId = model.StatusId,
-                RequestedAmount = model.RequestedAmount,
-                ApprovedAmount = model.ApprovedAmount,
-                JsonAttributes = model.JsonAttributes, // TODO: Add financial security protection
-                HistoryAttributes = "{\"Event\":\"Created\",\"LowestPermToView\":\"SubContractor\"}",
-                ApprovalDt = null, // Set when approved
-                CreateDt = DateTimeOffset.UtcNow,
-                LastUpdateDt = DateTimeOffset.UtcNow,
-                LastUpdateUser = User.Identity?.Name ?? "System",
-                CreatedByUser = User.Identity?.Name ?? "System"
+            var databaseModel = new PayApp();
+            _mapper.Map(model, databaseModel);
+            Console.WriteLine($"Creating PayApp with SubcontractorProjectId: {databaseModel.SubcontractorProjectId}");
 
+            //databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
+            databaseModel.CreateDt = DateTimeOffset.UtcNow;
+            databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
+            databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
+            databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
 
-            };
-
-            // TODO: Add financial security protection
-            // databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
-
+            Console.WriteLine("about to validate database model");
+            // Validate the database model
+            // if (!TryValidateModel(databaseModel))
+            // {
+            //     return BadRequest(ModelState);
+            // }
+            Console.WriteLine("about to add database model to context");
             _context.PayApps.Add(databaseModel);
 
             try
             {
-                await _context.SaveChangesAsync();
-                var historyRecord = new PayAppHistory
-                {
-                    PayAppId = databaseModel.PayAppId,
-                    CreateDt = DateTimeOffset.UtcNow,
-                    LastUpdateUser = User.Identity?.Name ?? "System",
-                    LastUpdateDt = DateTimeOffset.UtcNow,
-                    Event = "Created",
-                    LowestPermToView = "Subcontractor"
-                };
-
-                _context.PayAppHistories.Add(historyRecord);
+                Console.WriteLine("about to save changes to context");
                 await _context.SaveChangesAsync();
 
-                Console.WriteLine($"Successfully created PayApp {databaseModel.PayAppId} with history record");
-
+                // After saving, create the initial PayAppHistory record
+                // var payAppHistory = new PayAppHistory
+                // {
+                //     PayAppId = databaseModel.PayAppId,
+                //     Event = "Created",
+                //     CreateDt = DateTimeOffset.UtcNow,
+                //     LastUpdateDt = DateTimeOffset.UtcNow,
+                //     LastUpdateUser = User.Identity?.Name ?? "Unknown",
+                //     LowestPermToView = "Subcontractor" // or whatever the appropriate permission level should be
+                // };
+                
+                //_context.PayAppHistories.Add(payAppHistory);
+                //await _context.SaveChangesAsync();
             }
             catch (DbUpdateException ex)
             {
                 var innerMessage = ex.InnerException?.Message ?? "No inner exception";
                 return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
             }
-
+            Console.WriteLine("PayApp saved successfully");
             model.PayAppId = databaseModel.PayAppId;
 
-            // TODO: Add PayAppPaymentService back
-            // _payAppPaymentService.ReconcileTotalDollarAmount(model.PayAppId);
+            var resultModel = _mapper.Map<PayAppsVw>(databaseModel);
 
-            // TODO: Add email service back
-            /*
-            if (model.StatusId > 1)
-            {
-                // Send approval emails
-                // _emailService.SendPayAppToApproveEmail(...);
-                // _emailService.SendVivaNotificationNewPayApp(...);
-            }
-            */
+            // // Reconcile payment amounts
+            // var payAppPaymentService = new PayAppPaymentService(model.PayAppId);
+            // await payAppPaymentService.ReconcileTotalDollarAmount();
 
-            return Created(model);
+            // // Send notifications if status > 1
+            // if (model.StatusId > 1)
+            // {
+            //     var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            //     var spv = await _context.PayAppsVw.FirstOrDefaultAsync(l => l.PayAppId == databaseModel.PayAppId);
+
+            //     if (spv != null && userId != null)
+            //     {
+            //         await _emailService.SendPayAppToApproveEmail(userId, spv.GeneralContractorId);
+            //         await _emailService.SendVivaNotificationNewPayApp(userId, spv.ProjectId, spv.GeneralContractorId, spv.PayAppId);
+            //     }
+            // }
+
+            return Created($"PayApps({model.PayAppId})", model);
         }
+
 
     }
 }
