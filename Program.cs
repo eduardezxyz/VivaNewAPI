@@ -6,6 +6,7 @@ using NewVivaApi.Data;
 using NewVivaApi.Models;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.OData.Routing;
+using NewVivaApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,7 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(typeof(AutoMapperConfig));
+builder.Services.AddHttpContextAccessor();
 
 // Add DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>

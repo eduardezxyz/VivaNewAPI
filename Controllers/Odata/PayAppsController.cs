@@ -14,6 +14,7 @@ using Microsoft.OData;
 using AutoMapper;
 using NewVivaApi.Data;
 using NewVivaApi.Models;
+using NewVivaApi.Services;
 using Microsoft.Extensions.Logging;
 
 namespace NewVivaApi.Controllers.OData
@@ -27,6 +28,7 @@ namespace NewVivaApi.Controllers.OData
         // private readonly IPayAppPaymentService _payAppPaymentService;
         // private readonly IEmailService _emailService;
         // private readonly IWebHookService _webHookService;
+        private readonly PayAppPaymentService _payAppPaymentService;
         private readonly ILogger<PayAppsController> _logger;
 
         public PayAppsController(AppDbContext context, ILogger<PayAppsController> logger, IMapper mapper /*, IFinancialSecurityService financialSecurityService */)
@@ -137,17 +139,14 @@ namespace NewVivaApi.Controllers.OData
             }
 
             //auth checks
-            /*
-            if (User.Identity.IsServiceUser())
-            {
-                return BadRequest();
-            }
-
-            if (!User.Identity.CanServiceAccountMakePayAppsRecord(model.SubcontractorProjectId))
-            {
-                return BadRequest();
-            }
-            */
+            // if (User.Identity.IsServiceUser())
+            // {
+            //     return BadRequest();
+            // }
+            // if (!User.Identity.CanServiceAccountMakePayAppsRecord(model.SubcontractorProjectId))
+            // {
+            //     return BadRequest();
+            // }
 
             if (model == null)
             {
@@ -190,7 +189,7 @@ namespace NewVivaApi.Controllers.OData
             try
             {
                 Console.WriteLine("about to save changes to context");
-                await _context.SaveChangesAsync();
+                //await _context.SaveChangesAsync();
 
                 // After saving, create the initial PayAppHistory record
                 // var payAppHistory = new PayAppHistory
@@ -216,9 +215,25 @@ namespace NewVivaApi.Controllers.OData
 
             var resultModel = _mapper.Map<PayAppsVw>(databaseModel);
 
-            // // Reconcile payment amounts
-            // var payAppPaymentService = new PayAppPaymentService(model.PayAppId);
-            // await payAppPaymentService.ReconcileTotalDollarAmount();
+            // Reconcile payment amounts
+            try
+            {
+                var httpContextAccessor = HttpContext.RequestServices.GetService<IHttpContextAccessor>();
+                var paymentService = new PayAppPaymentService(model.PayAppId, httpContextAccessor);
+
+                _logger.LogInformation("Starting payment reconciliation for PayApp {PayAppId}", model.PayAppId);
+                Console.WriteLine($"Starting payment reconciliation for PayApp ID {model.PayAppId}");
+
+                await paymentService.ReconcileTotalDollarAmount();
+
+                Console.WriteLine($"Reconciliation completed for PayApp ID {model.PayAppId}");
+                _logger.LogInformation("Payment reconciliation completed for PayApp {PayAppId}", model.PayAppId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during payment reconciliation for PayApp {PayAppId}", model.PayAppId);
+                // Continue - don't fail the whole operation
+            }
 
             // // Send notifications if status > 1
             // if (model.StatusId > 1)
