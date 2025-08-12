@@ -8,7 +8,6 @@ using NewVivaApi.Services;
 using AutoMapper;
 using System.Security.Claims;
 using Newtonsoft.Json.Linq;
-using System.Web;
 using System;
 
 namespace NewVivaApi.Controllers.OData

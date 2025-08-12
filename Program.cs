@@ -37,6 +37,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var app = builder.Build();
 
+NewVivaApi.Extensions.ServiceLocator.Current = app.Services;
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
