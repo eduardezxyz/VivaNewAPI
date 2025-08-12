@@ -13,7 +13,6 @@ using System.IO;
 using System.Configuration;
 using Microsoft.Extensions.Logging;
 
-
 namespace NewVivaApi.Controllers
 {
     //[Authorize]

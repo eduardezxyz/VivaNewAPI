@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using Microsoft.AspNetCore.OData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OData.Edm;
@@ -26,14 +29,35 @@ builder.Services.AddControllers()
         .SetMaxTop(100)
         .AddRouteComponents("odata", GetEdmModel()));
 
+// 1. Configure Authentication with JWT Bearer
+builder.Services.AddAuthentication(options =>
+		{
+			options.DefaultAuthenticateScheme = "JWT_OR_COOKIE";
+			options.DefaultChallengeScheme = "JWT_OR_COOKIE";
+			options.DefaultScheme = "JWT_OR_COOKIE";
+		})
+
+// Adding Jwt Bearer  
+.AddJwtBearer(options =>
+{
+    options.SaveToken = true;
+    options.RequireHttpsMetadata = false;
+    options.TokenValidationParameters = new TokenValidationParameters()
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["JWT:ValidAudience"],
+        ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
+    };
+});
+
+builder.Services.AddAuthorization();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(typeof(AutoMapperConfig));
 builder.Services.AddHttpContextAccessor();
-
-// Add DbContext
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
@@ -44,7 +68,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// 2. Add authentication middleware
+app.UseAuthentication();
+
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
@@ -77,9 +106,6 @@ static IEdmModel GetEdmModel()
 
     builder.EntitySet<DocumentsVw>("Documents")
         .EntityType.HasKey(d => d.DocumentId);
-
-    builder.EntitySet<UserProfilesVw>("UserProfiles")
-        .EntityType.HasKey(up => up.UserId);
 
     return builder.GetEdmModel();
 }
