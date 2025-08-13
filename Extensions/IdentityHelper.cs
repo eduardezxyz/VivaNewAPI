@@ -10,7 +10,7 @@ namespace NewVivaApi.Extensions
         public static int? GetSubcontractorID(this IIdentity identity)
         {
             var serviceProvider = GetServiceProvider();
-            using var context = serviceProvider.GetRequiredService<AppDbContext>();
+            var context = serviceProvider.GetRequiredService<AppDbContext>();
             
             string? currentUserId = GetUserId(identity);
             if (currentUserId == null) return null;
@@ -24,7 +24,7 @@ namespace NewVivaApi.Extensions
         public static int? GetGeneralContractorID(this IIdentity identity)
         {
             var serviceProvider = GetServiceProvider();
-            using var context = serviceProvider.GetRequiredService<AppDbContext>();
+            var context = serviceProvider.GetRequiredService<AppDbContext>();
             
             string? currentUserId = GetUserId(identity);
             if (currentUserId == null) return null;
@@ -38,7 +38,7 @@ namespace NewVivaApi.Extensions
         public static bool IsVivaUser(this IIdentity identity)
         {
             var serviceProvider = GetServiceProvider();
-            using var context = serviceProvider.GetRequiredService<AppDbContext>();
+            var context = serviceProvider.GetRequiredService<AppDbContext>();
             
             string? currentUserId = GetUserId(identity);
             if (currentUserId == null) return false;
@@ -49,7 +49,7 @@ namespace NewVivaApi.Extensions
         public static bool CanServiceAccountMakeProjectRecord(this IIdentity identity, int generalContractorId)
         {
             var serviceProvider = GetServiceProvider();
-            using var context = serviceProvider.GetRequiredService<AppDbContext>();
+            var context = serviceProvider.GetRequiredService<AppDbContext>();
             
             string? currentUserId = GetUserId(identity);
             if (currentUserId == null) return false;
@@ -66,7 +66,7 @@ namespace NewVivaApi.Extensions
         public static bool CanServiceAccountMakeSubcontractorProjectsRecord(this IIdentity identity, int subcontractorId, int projectId)
         {
             var serviceProvider = GetServiceProvider();
-            using var context = serviceProvider.GetRequiredService<AppDbContext>();
+            var context = serviceProvider.GetRequiredService<AppDbContext>();
             
             string? currentUserId = GetUserId(identity);
             if (currentUserId == null) return false;
@@ -86,7 +86,7 @@ namespace NewVivaApi.Extensions
         public static bool CanServiceAccountMakePayAppsRecord(this IIdentity identity, int subcontractorProjectId)
         {
             var serviceProvider = GetServiceProvider();
-            using var context = serviceProvider.GetRequiredService<AppDbContext>();
+            var context = serviceProvider.GetRequiredService<AppDbContext>();
             
             string? currentUserId = GetUserId(identity);
             if (currentUserId == null) return false;
@@ -103,7 +103,7 @@ namespace NewVivaApi.Extensions
         public static bool CanServiceAccountMakePayAppPaymentsRecord(this IIdentity identity, int payAppId)
         {
             var serviceProvider = GetServiceProvider();
-            using var context = serviceProvider.GetRequiredService<AppDbContext>();
+            var context = serviceProvider.GetRequiredService<AppDbContext>();
             
             string? currentUserId = GetUserId(identity);
             if (currentUserId == null) return false;
@@ -120,7 +120,7 @@ namespace NewVivaApi.Extensions
         public static bool IsGeneralContractor(this IIdentity identity)
         {
             var serviceProvider = GetServiceProvider();
-            using var context = serviceProvider.GetRequiredService<AppDbContext>();
+            var context = serviceProvider.GetRequiredService<AppDbContext>();
             
             string? currentUserId = GetUserId(identity);
             if (currentUserId == null) return false;
@@ -131,7 +131,7 @@ namespace NewVivaApi.Extensions
         public static bool IsSubContractor(this IIdentity identity)
         {
             var serviceProvider = GetServiceProvider();
-            using var context = serviceProvider.GetRequiredService<AppDbContext>();
+            var context = serviceProvider.GetRequiredService<AppDbContext>();
             
             string? currentUserId = GetUserId(identity);
             if (currentUserId == null) return false;
@@ -142,7 +142,7 @@ namespace NewVivaApi.Extensions
         public static bool IsServiceUser(this IIdentity identity)
         {
             var serviceProvider = GetServiceProvider();
-            using var context = serviceProvider.GetRequiredService<AppDbContext>();
+            var context = serviceProvider.GetRequiredService<AppDbContext>();
             
             string? currentUserId = GetUserId(identity);
             if (currentUserId == null) return false;
@@ -163,7 +163,7 @@ namespace NewVivaApi.Extensions
             }
 
             var serviceProvider = GetServiceProvider();
-            using var context = serviceProvider.GetRequiredService<AppDbContext>();
+            var context = serviceProvider.GetRequiredService<AppDbContext>();
             
             string? currentUserId = GetUserId(identity);
             if (currentUserId == null) return false;

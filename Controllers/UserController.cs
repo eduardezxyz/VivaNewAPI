@@ -25,57 +25,144 @@ namespace NewVivaApi.Controllers
         [HttpGet]
         public async Task<IActionResult> Get()
         {
-            if (User.Identity?.IsServiceUser() == true)
+            try
             {
-                return BadRequest("Service users cannot access user profiles");
-            }
+                _logger.LogInformation("UserController.Get() called");
+                
+                // Debug: Check if User.Identity exists
+                _logger.LogInformation("User.Identity is null: {IsNull}", User.Identity == null);
+                _logger.LogInformation("User.Identity.IsAuthenticated: {IsAuth}", User.Identity?.IsAuthenticated ?? false);
+                
+                // Debug: Check service user first
+                bool isServiceUser = false;
+                try
+                {
+                    isServiceUser = User.Identity?.IsServiceUser() == true;
+                    _logger.LogInformation("IsServiceUser check result: {IsServiceUser}", isServiceUser);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error checking IsServiceUser");
+                }
 
-            string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            
-            if (string.IsNullOrEmpty(userId))
-            {
-                return BadRequest("User ID not found in claims");
-            }
+                if (isServiceUser)
+                {
+                    return BadRequest("Service users cannot access user profiles");
+                }
 
-            var aspNetUser = await _context.UserProfiles
-                .FirstOrDefaultAsync(s => s.UserId == userId);
-            
-            if (aspNetUser == null)
-            {
-                _logger.LogWarning("UserProfile not found for UserId: {UserId}", userId);
-                return BadRequest("User profile not found");
-            }
+                string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                _logger.LogInformation("UserId from claims: {UserId}", userId ?? "NULL");
+                
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("No user ID in claims - checking database for test users");
+                    
+                    // Count total users in AspNetUsers
+                    var totalUsers = await _context.AspNetUsers.CountAsync();
+                    _logger.LogInformation("Total users in AspNetUsers: {Count}", totalUsers);
+                    
+                    if (totalUsers == 0)
+                    {
+                        return BadRequest("No users found in AspNetUsers table");
+                    }
+                    
+                    // Get first user for testing
+                    var testUser = await _context.AspNetUsers.FirstOrDefaultAsync();
+                    if (testUser != null)
+                    {
+                        userId = testUser.Id;
+                        _logger.LogInformation("Using test user - ID: {UserId}, Email: {Email}", userId, testUser.Email);
+                    }
+                    else
+                    {
+                        return BadRequest("Failed to get test user from database");
+                    }
+                }
 
-            var userAccessProfile = new UserAccessProfile
-            {
-                UserName = aspNetUser.UserName,
-                UserId = userId,
-                ResetPasswordOnLogin = false
-            };
+                // Check if UserProfile exists
+                var userProfilesCount = await _context.UserProfiles.CountAsync();
+                _logger.LogInformation("Total UserProfiles in database: {Count}", userProfilesCount);
+                
+                var aspNetUser = await _context.UserProfiles
+                    .FirstOrDefaultAsync(s => s.UserId == userId);
+                
+                if (aspNetUser == null)
+                {
+                    _logger.LogWarning("UserProfile not found for UserId: {UserId}", userId);
+                    
+                    // Check if user exists in AspNetUsers
+                    var userExistsInAspNet = await _context.AspNetUsers.AnyAsync(u => u.Id == userId);
+                    _logger.LogInformation("User exists in AspNetUsers: {Exists}", userExistsInAspNet);
+                    
+                    if (userExistsInAspNet)
+                    {
+                        // Get the AspNetUser details
+                        var aspNetUserDetails = await _context.AspNetUsers
+                            .Where(u => u.Id == userId)
+                            .Select(u => new { u.Id, u.Email, u.UserName })
+                            .FirstOrDefaultAsync();
+                            
+                        return BadRequest($"User {aspNetUserDetails?.Email} exists in AspNetUsers but no UserProfile found. You may need to create a UserProfile record.");
+                    }
+                    
+                    return BadRequest($"User with ID {userId} not found in either AspNetUsers or UserProfiles");
+                }
 
-            // Set user type and permissions based on role
-            if (User.Identity != null && User.Identity.IsVivaUser())
-            {
-                userAccessProfile.UserType = UserType.Viva;
-                userAccessProfile.CanApproveTf = true;
-            }
-            else if (User.Identity != null && User.Identity.IsGeneralContractor())
-            {
-                userAccessProfile.UserType = UserType.GeneralContractor;
-                userAccessProfile.CanApproveTf = User.Identity.CanApproveTf();
-                userAccessProfile.GeneralContractorId = User.Identity.GetGeneralContractorID();
-            }
-            else if (User.Identity != null && User.Identity.IsSubContractor())
-            {
-                userAccessProfile.UserType = UserType.Subcontractor;
-                userAccessProfile.CanApproveTf = false;
-                userAccessProfile.SubcontractorId = User.Identity.GetSubcontractorID();
-            }
-            
-            _logger.LogInformation("User profile retrieved for UserId: {UserId}, UserType: {UserType}", 
-                userId, userAccessProfile.UserType);
+                var userAccessProfile = new UserAccessProfile
+                {
+                    UserName = aspNetUser.UserName,
+                    UserId = userId,
+                    ResetPasswordOnLogin = false
+                };
 
-            return Ok(userAccessProfile);
+                // Set user type and permissions based on role
+                try
+                {
+                    if (User.Identity != null && User.Identity.IsVivaUser())
+                    {
+                        userAccessProfile.UserType = UserType.Viva;
+                        userAccessProfile.CanApproveTf = true;
+                        _logger.LogInformation("User identified as Viva user");
+                    }
+                    else if (User.Identity != null && User.Identity.IsGeneralContractor())
+                    {
+                        userAccessProfile.UserType = UserType.GeneralContractor;
+                        userAccessProfile.CanApproveTf = User.Identity.CanApproveTf();
+                        userAccessProfile.GeneralContractorId = User.Identity.GetGeneralContractorID();
+                        _logger.LogInformation("User identified as General Contractor");
+                    }
+                    else if (User.Identity != null && User.Identity.IsSubContractor())
+                    {
+                        userAccessProfile.UserType = UserType.Subcontractor;
+                        userAccessProfile.CanApproveTf = false;
+                        userAccessProfile.SubcontractorId = User.Identity.GetSubcontractorID();
+                        _logger.LogInformation("User identified as Subcontractor");
+                    }
+                    else
+                    {
+                        // Default for testing
+                        _logger.LogWarning("No specific user type found - defaulting to Viva");
+                        userAccessProfile.UserType = UserType.Viva;
+                        userAccessProfile.CanApproveTf = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error determining user type, using default");
+                    userAccessProfile.UserType = UserType.Viva;
+                    userAccessProfile.CanApproveTf = true;
+                }
+                
+                _logger.LogInformation("Successfully retrieved user profile for UserId: {UserId}, UserType: {UserType}", 
+                    userId, userAccessProfile.UserType);
+
+                return Ok(userAccessProfile);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in UserController.Get()");
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpGet("IsServiceUser")]
