@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.OData;
@@ -10,11 +9,10 @@ using NewVivaApi.Models;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.OData.Routing;
 using NewVivaApi.Services;
-using NewVivaApi.Authentication;
 using NewVivaApi.Authentication.Models;
-using Microsoft.AspNetCore.Identity;
-using NewVivaApi.Authentication.Services;
 using NewVivaApi.Authentication;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,9 +51,8 @@ builder.Services.AddScoped<NewVivaApi.Services.AspNetUserService>();
 
 
 builder.Services.AddIdentity<NewVivaApi.Authentication.Models.ApplicationUser, IdentityRole>()
-    .AddEntityFrameworkStores<AppDbContext>()  // Based on the warning, your DbContext is AppDbContext
+    .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
-
 // 1. Configure Authentication with JWT Bearer
 builder.Services.AddAuthentication(options =>
 		{

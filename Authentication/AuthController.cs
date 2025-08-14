@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 using System.Threading.Tasks;
 using NewVivaApi.Data; // Make sure this points to your AppDbContext namespace
-using NewVivaApi.Authentication.Services;
+using NewVivaApi.Authentication.Models;
 using NewVivaApi.Authentication;
 using NewVivaApi.Models;
 using Microsoft.AspNet.Identity; // Old Identity v2

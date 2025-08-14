@@ -52,15 +52,15 @@ public class AuthService
 
         // var user = await _userManager.FindByNameAsync(model.Username);
         //var user = await _userManager.FindUserWithLogging(model.UserName);
-        Console.WriteLine($"FindByNameAsync returned: {user != null}");
+        //Console.WriteLine($"FindByNameAsync returned: {user != null}");
 
         
-        if (user == null)
-        {
-            _logger.LogError("User not found.");
-            return null;
-        }
-        Console.WriteLine($"Logging in user: {user.UserName}");
+        // if (user == null)
+        // {
+        //     _logger.LogError("User not found.");
+        //     return null;
+        // }
+        //Console.WriteLine($"Logging in user: {user.UserName}");
 
         // if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
         // {
