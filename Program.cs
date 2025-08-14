@@ -10,10 +10,16 @@ using NewVivaApi.Models;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.OData.Routing;
 using NewVivaApi.Services;
+using NewVivaApi.Authentication.Services;
+using NewVivaApi.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Register your AppDbContext with the DI container
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Add controllers
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
