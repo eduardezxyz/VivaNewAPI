@@ -1,12 +1,13 @@
-using NewVivaApi.Authentication.Services;
 using NewVivaApi.Authentication;
 using NewVivaApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace NewVivaApi.Controllers;
-[Route("api/[controller]")]
+
+[Route("auth")]
 [ApiController]
 public class AuthController : ControllerBase
 {
@@ -23,11 +24,13 @@ public class AuthController : ControllerBase
     [Route("Login")]
     public async Task<ActionResult> Login([FromBody] LoginModel model)
     {
+        Console.WriteLine("=== AUTH LOGIN ===");
+        Console.WriteLine($" (AuthController) Model: {model}");
         var result = await _service.Login(model);
-        if (result == null)
-        {
-            return Unauthorized(new Response { Type = "error", Message = "Login failed!" });
-        }
+        // if (result == null)
+        // {
+        //     return BadRequest(new Response { Type = "error", Message = "Login failed!" });
+        // }
         // if (await _service.IsPasswordExpired(model.Username))
         // {
         //     var redirectLink = await _service.GetResetRedirectLink(model.Username);
@@ -49,7 +52,7 @@ public class AuthController : ControllerBase
         //     }
         //     return BadRequest(new Response { Type = "error", Message = "Error sending 2FA Code!" });
         // }
-        return Ok(new DataResponse<string> { Type = "success", Message = "Login successful!", Data = result });
+        return Ok(new DataResponse<string> { Type = "success", Message = "Login successful!" });
     }
 
     // [HttpPost]
@@ -79,4 +82,10 @@ public class AuthController : ControllerBase
     //     }
     //     return Ok(new DataResponse<string> { Type = "success", Message = "Impersonation token created successfully!", Data = impersonationToken });
     // }
+}
+
+    public class SimpleLoginRequest
+{
+    public string username { get; set; } = "";  // lowercase to match JSON
+    public string password { get; set; } = "";  // lowercase to match JSON
 }

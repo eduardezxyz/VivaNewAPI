@@ -10,6 +10,9 @@ using NewVivaApi.Models;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.OData.Routing;
 using NewVivaApi.Services;
+using NewVivaApi.Authentication;
+using NewVivaApi.Authentication.Models;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +42,14 @@ builder.Services.AddControllers()
         .SetMaxTop(100)
         .AddRouteComponents("odata", GetEdmModel()));
 
+builder.Services.AddScoped<NewVivaApi.Authentication.AuthService>();
+builder.Services.AddScoped<NewVivaApi.Services.AspNetUserService>();
+
+
+builder.Services.AddIdentity<NewVivaApi.Authentication.Models.ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<AppDbContext>()  // Based on the warning, your DbContext is AppDbContext
+    .AddDefaultTokenProviders();
+
 // 1. Configure Authentication with JWT Bearer
 builder.Services.AddAuthentication(options =>
 		{
@@ -47,20 +58,20 @@ builder.Services.AddAuthentication(options =>
 			options.DefaultScheme = "JWT_OR_COOKIE";
 		})
 
-// Adding Jwt Bearer  
-.AddJwtBearer(options =>
-{
-    options.SaveToken = true;
-    options.RequireHttpsMetadata = false;
-    options.TokenValidationParameters = new TokenValidationParameters()
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidAudience = builder.Configuration["JWT:ValidAudience"],
-        ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
-    };
-});
+        // Adding Jwt Bearer  
+        .AddJwtBearer(options =>
+        {
+            options.SaveToken = true;
+            options.RequireHttpsMetadata = false;
+            options.TokenValidationParameters = new TokenValidationParameters()
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidAudience = builder.Configuration["JWT:ValidAudience"],
+                ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
+            };
+        });
 
 builder.Services.AddAuthorization();
 
@@ -118,6 +129,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
 
 app.Run();
 

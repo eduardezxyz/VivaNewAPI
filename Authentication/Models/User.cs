@@ -8,7 +8,7 @@ public class User : ApplicationUser
 	public override string UserName { get; set; } = "";
 	public virtual ICollection<Role>? Roles { get; set; }
 
-	public User(User incoming)
+	public User(ApplicationUser incoming)
 	{
 		Id = incoming.Id;
 		FirstName = incoming.FirstName;
@@ -21,7 +21,7 @@ public class User : ApplicationUser
 		TwoFactorEnabled = incoming.TwoFactorEnabled;
 		TwoFactorType = incoming.TwoFactorType;
 		TwoFactorConfirmed = incoming.TwoFactorConfirmed;
-		Roles = incoming.Roles;
+		//Roles = incoming.Roles;
 	}
 
 	public User() { }
@@ -29,7 +29,7 @@ public class User : ApplicationUser
 
 public partial class UserDTO
 {
-	public Guid Id { get; set; }
+	public string Id { get; set; }
 	public string FirstName { get; set; }
 	public string LastName { get; set; }
 	public string UserName { get; set; }

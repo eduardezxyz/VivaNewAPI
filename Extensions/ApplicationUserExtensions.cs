@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NewVivaApi.Data;
+using NewVivaApi.Authentication.Models;
+using NewVivaApi.Authentication;
 using NewVivaApi.Models;
 
 namespace NewVivaApi.Extensions

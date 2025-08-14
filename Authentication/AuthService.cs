@@ -12,7 +12,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using NewVivaApi.Services;
 
-namespace NewVivaApi.Authentication.Services;
+namespace NewVivaApi.Authentication;
 public class AuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -47,9 +47,24 @@ public class AuthService
 
     public async Task<string?> Login([FromBody] LoginModel model)
     {
+        Console.WriteLine($"Model: {model}");
+        Console.WriteLine($"(AuthService) Logging in user: {model.Username}");
+
         var user = await _userManager.FindByNameAsync(model.Username);
+        //var user = await _userManager.FindUserWithLogging(model.UserName);
+        Console.WriteLine($"FindByNameAsync returned: {user != null}");
+
+        
+        if (user == null)
+        {
+            _logger.LogError("User not found.");
+            return null;
+        }
+        Console.WriteLine($"Logging in user: {user.UserName}");
+
         if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
         {
+            Console.WriteLine("Attempting to get token for user.");
             return await GetToken(user);
         }
         _logger.LogError("Error logging in.");
