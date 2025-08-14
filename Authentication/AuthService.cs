@@ -15,34 +15,34 @@ using NewVivaApi.Services;
 namespace NewVivaApi.Authentication;
 public class AuthService
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<AuthService> _logger;
+    // private readonly UserManager<ApplicationUser> _userManager;
+    // private readonly IConfiguration _configuration;
+    // private readonly ILogger<AuthService> _logger;
     // private readonly IEmailService _service;
-    private readonly IHttpContextAccessor _contextAccessor;
+    // private readonly IHttpContextAccessor _contextAccessor;
     // private readonly TwilioService _smsService;
-    private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly AspNetUserService _aspNetUserService;
+    // private readonly SignInManager<ApplicationUser> _signInManager;
+    // private readonly AspNetUserService _aspNetUserService;
 
     public AuthService(
-        UserManager<ApplicationUser> userManager,
-        ILogger<AuthService> logger,
-        IConfiguration configuration,
-        IHttpContextAccessor contextAccessor,
+        // UserManager<ApplicationUser> userManager,
+        // ILogger<AuthService> logger,
+        // IConfiguration configuration,
+        // IHttpContextAccessor contextAccessor,
         // IEmailService service,
         // TwilioService smsService,
-        SignInManager<ApplicationUser> signInManager,
-        AspNetUserService aspNetUserService
+        // SignInManager<ApplicationUser> signInManager,
+        // AspNetUserService aspNetUserService
         )
     {
-        _userManager = userManager;
-        _configuration = configuration;
-        _contextAccessor = contextAccessor;
+        // _userManager = userManager;
+        // _configuration = configuration;
+        // _contextAccessor = contextAccessor;
         // _service = service;
-        _logger = logger;
+        // _logger = logger;
         // _smsService = smsService;
-        _signInManager = signInManager;
-        _aspNetUserService = aspNetUserService;
+        // _signInManager = signInManager;
+        // _aspNetUserService = aspNetUserService;
     }
 
     public async Task<string?> Login([FromBody] LoginModel model)
@@ -50,7 +50,7 @@ public class AuthService
         Console.WriteLine($"Model: {model}");
         Console.WriteLine($"(AuthService) Logging in user: {model.Username}");
 
-        var user = await _userManager.FindByNameAsync(model.Username);
+        // var user = await _userManager.FindByNameAsync(model.Username);
         //var user = await _userManager.FindUserWithLogging(model.UserName);
         Console.WriteLine($"FindByNameAsync returned: {user != null}");
 
@@ -62,12 +62,12 @@ public class AuthService
         }
         Console.WriteLine($"Logging in user: {user.UserName}");
 
-        if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
-        {
+        // if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
+        // {
             Console.WriteLine("Attempting to get token for user.");
-            return await GetToken(user);
-        }
-        _logger.LogError("Error logging in.");
+        //     return await GetToken(user);
+        // }
+        // _logger.LogError("Error logging in.");
         return null;
     }
 
@@ -193,45 +193,45 @@ public class AuthService
     //     }
     // }
 
-    public async Task<string> TokenRefresh()
-    {
-        var contextUser = _contextAccessor.HttpContext!.User;
-        var user = await _userManager.FindByNameAsync(contextUser.Identity!.Name);
-        var token = contextUser.Claims.FirstOrDefault(t => t.Type == "ExternalToken")?.Value ?? null;
-        return await GetToken(user, token);
-    }
+    // public async Task<string> TokenRefresh()
+    // {
+    //     var contextUser = _contextAccessor.HttpContext!.User;
+    //     var user = await _userManager.FindByNameAsync(contextUser.Identity!.Name);
+    //     var token = contextUser.Claims.FirstOrDefault(t => t.Type == "ExternalToken")?.Value ?? null;
+    //     return await GetToken(user, token);
+    // }
 
-    private async Task<string> GetToken(ApplicationUser user, string? externalToken = "")
-    {
+    // private async Task<string> GetToken(ApplicationUser user, string? externalToken = "")
+    // {
 
-        var authClaims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, user.UserName),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString())
-        };
+    //     var authClaims = new List<Claim>
+    //     {
+    //         new Claim(ClaimTypes.Name, user.UserName),
+    //         new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+    //         new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString())
+    //     };
 
-        var userRoles = (await _userManager.GetRolesAsync(user)).ToList();
+        // var userRoles = (await _userManager.GetRolesAsync(user)).ToList();
 
-        userRoles.ForEach(r => authClaims.Add(new Claim(ClaimTypes.Role, r)));
+        // userRoles.ForEach(r => authClaims.Add(new Claim(ClaimTypes.Role, r)));
 
-        if (!string.IsNullOrEmpty(externalToken))
-        {
-            authClaims.Add(new Claim("ExternalToken", externalToken));
-        }
+        // if (!string.IsNullOrEmpty(externalToken))
+        // {
+        //     authClaims.Add(new Claim("ExternalToken", externalToken));
+        // }
 
-        var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+    //     var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
 
-        var token = new JwtSecurityToken(
-            issuer: _configuration["JWT:ValidIssuer"],
-            audience: _configuration["JWT:ValidAudience"],
-            expires: DateTime.Now.AddHours(8),
-            claims: authClaims,
-            signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
-        );
+    //     var token = new JwtSecurityToken(
+    //         issuer: _configuration["JWT:ValidIssuer"],
+    //         audience: _configuration["JWT:ValidAudience"],
+    //         expires: DateTime.Now.AddHours(8),
+    //         claims: authClaims,
+    //         signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
+    //     );
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
+    //     return new JwtSecurityTokenHandler().WriteToken(token);
+    // }
 
     // public async Task<bool> IsPasswordExpired(string username)
     // {
