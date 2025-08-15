@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using NewVivaApi.Authentication.Models;
 
 namespace NewVivaApi.Models;
 
@@ -17,5 +18,5 @@ public partial class AdminUser
 
     public DateTimeOffset? DeleteDt { get; set; }
 
-    public virtual AspNetUser User { get; set; } = null!;
+    public virtual ApplicationUser User { get; set; } = null!;
 }

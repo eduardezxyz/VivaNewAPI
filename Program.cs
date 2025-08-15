@@ -13,6 +13,7 @@ using NewVivaApi.Authentication.Models;
 using NewVivaApi.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,10 +26,9 @@ if (string.IsNullOrEmpty(connectionString))
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
 
-
-// Register your AppDbContext with the DI container
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Add Identity DbContext (separate from business DbContext)
+builder.Services.AddDbContext<NewVivaApi.Authentication.Models.IdentityDbContext>(options =>
+    options.UseSqlServer(connectionString));
 
 // Add controllers
 builder.Services.AddControllers()
@@ -49,16 +49,23 @@ builder.Services.AddControllers()
 builder.Services.AddScoped<NewVivaApi.Authentication.AuthService>();
 builder.Services.AddScoped<NewVivaApi.Services.AspNetUserService>();
 
-
-builder.Services.AddIdentity<NewVivaApi.Authentication.Models.ApplicationUser, IdentityRole>()
-    .AddEntityFrameworkStores<AppDbContext>()
+// Configure Identity to use the separate IdentityDbContext
+builder.Services.AddIdentity<ApplicationUser, Role>()
+    .AddEntityFrameworkStores<NewVivaApi.Authentication.Models.IdentityDbContext>()
     .AddDefaultTokenProviders();
-// 1. Configure Authentication with JWT Bearer
+
+// builder.Services.AddIdentity<NewVivaApi.Authentication.Models.ApplicationUser, IdentityRole>()
+//     .AddEntityFrameworkStores<AppDbContext>()
+//     .AddDefaultTokenProviders();
+
 builder.Services.AddAuthentication(options =>
-		{
-			options.DefaultAuthenticateScheme = "JWT_OR_COOKIE";
-			options.DefaultChallengeScheme = "JWT_OR_COOKIE";
-			options.DefaultScheme = "JWT_OR_COOKIE";
+        {
+            // options.DefaultAuthenticateScheme = "JWT_OR_COOKIE";
+            // options.DefaultChallengeScheme = "JWT_OR_COOKIE";
+            // options.DefaultScheme = "JWT_OR_COOKIE";
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 		})
 
         // Adding Jwt Bearer  

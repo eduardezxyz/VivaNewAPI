@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using NewVivaApi.Authentication.Models;
 
 namespace NewVivaApi.Models;
 
@@ -23,5 +24,5 @@ public partial class GeneralContractorUser
 
     public virtual GeneralContractor GeneralContractor { get; set; } = null!;
 
-    public virtual AspNetUser User { get; set; } = null!;
+    public virtual ApplicationUser User { get; set; } = null!;
 }

@@ -5,6 +5,7 @@ using NewVivaApi.Data;
 using NewVivaApi.Models;
 using System.Security.Claims;
 using NewVivaApi.Extensions;
+using NewVivaApi.Authentication.Models; 
 
 namespace NewVivaApi.Controllers
 {
@@ -15,11 +16,13 @@ namespace NewVivaApi.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ILogger<UserController> _logger;
+        private readonly IdentityDbContext _identityDbContext;
 
-        public UserController(AppDbContext context, ILogger<UserController> logger)
+        public UserController(AppDbContext context, ILogger<UserController> logger, IdentityDbContext identityDbContext)
         {
             _context = context;
             _logger = logger;
+            _identityDbContext = identityDbContext;
         }
 
         [HttpGet]
@@ -57,8 +60,8 @@ namespace NewVivaApi.Controllers
                 {
                     _logger.LogWarning("No user ID in claims - checking database for test users");
                     
-                    // Count total users in AspNetUsers
-                    var totalUsers = await _context.AspNetUsers.CountAsync();
+                    // Count total users
+                    var totalUsers = await _identityDbContext.Users.CountAsync();
                     _logger.LogInformation("Total users in AspNetUsers: {Count}", totalUsers);
                     
                     if (totalUsers == 0)
@@ -67,7 +70,7 @@ namespace NewVivaApi.Controllers
                     }
                     
                     // Get first user for testing
-                    var testUser = await _context.AspNetUsers.FirstOrDefaultAsync();
+                    var testUser = await _identityDbContext.Users.FirstOrDefaultAsync();
                     if (testUser != null)
                     {
                         userId = testUser.Id;
@@ -91,13 +94,13 @@ namespace NewVivaApi.Controllers
                     _logger.LogWarning("UserProfile not found for UserId: {UserId}", userId);
                     
                     // Check if user exists in AspNetUsers
-                    var userExistsInAspNet = await _context.AspNetUsers.AnyAsync(u => u.Id == userId);
+                    var userExistsInAspNet = await _identityDbContext.Users.AnyAsync(u => u.Id == userId);
                     _logger.LogInformation("User exists in AspNetUsers: {Exists}", userExistsInAspNet);
                     
                     if (userExistsInAspNet)
                     {
                         // Get the AspNetUser details
-                        var aspNetUserDetails = await _context.AspNetUsers
+                        var aspNetUserDetails = await _identityDbContext.Users
                             .Where(u => u.Id == userId)
                             .Select(u => new { u.Id, u.Email, u.UserName })
                             .FirstOrDefaultAsync();
@@ -177,7 +180,7 @@ namespace NewVivaApi.Controllers
             {
                 // Check if the email belongs to a service user
                 var isServiceUser = await _context.ServiceUsers
-                    .Join(_context.AspNetUsers,
+                    .Join(_identityDbContext.Users,
                           su => su.UserId,
                           au => au.Id,
                           (su, au) => new { ServiceUser = su, AspNetUser = au })

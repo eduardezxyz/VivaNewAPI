@@ -15,34 +15,38 @@ using NewVivaApi.Services;
 namespace NewVivaApi.Authentication;
 public class AuthService
 {
-    // private readonly UserManager<ApplicationUser> _userManager;
-    // private readonly IConfiguration _configuration;
-    // private readonly ILogger<AuthService> _logger;
-    // private readonly IEmailService _service;
-    // private readonly IHttpContextAccessor _contextAccessor;
-    // private readonly TwilioService _smsService;
-    // private readonly SignInManager<ApplicationUser> _signInManager;
-    // private readonly AspNetUserService _aspNetUserService;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<AuthService> _logger;
+    //private readonly IEmailService _service;
+    private readonly IHttpContextAccessor _contextAccessor;
+    //private readonly TwilioService _smsService;
+    //private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly AspNetUserService _aspNetUserService;
+    private readonly IdentityDbContext _identityDbContext;
+
 
     public AuthService(
-        // UserManager<ApplicationUser> userManager,
-        // ILogger<AuthService> logger,
-        // IConfiguration configuration,
-        // IHttpContextAccessor contextAccessor,
-        // IEmailService service,
-        // TwilioService smsService,
-        // SignInManager<ApplicationUser> signInManager,
-        // AspNetUserService aspNetUserService
+        UserManager<ApplicationUser> userManager,
+        ILogger<AuthService> logger,
+        IConfiguration configuration,
+        IHttpContextAccessor contextAccessor,
+        //IEmailService service,
+        //TwilioService smsService,
+        //SignInManager<ApplicationUser> signInManager,
+        IdentityDbContext identityDbContext, // Add this parameter
+        AspNetUserService aspNetUserService
         )
     {
-        // _userManager = userManager;
-        // _configuration = configuration;
-        // _contextAccessor = contextAccessor;
-        // _service = service;
-        // _logger = logger;
-        // _smsService = smsService;
-        // _signInManager = signInManager;
-        // _aspNetUserService = aspNetUserService;
+        _userManager = userManager;
+        _configuration = configuration;
+        _contextAccessor = contextAccessor;
+        //_service = service;
+        _logger = logger;
+        //_smsService = smsService;
+        //_signInManager = signInManager;
+        _aspNetUserService = aspNetUserService;
+        _identityDbContext = identityDbContext;
     }
 
     public async Task<string?> Login([FromBody] LoginModel model)
@@ -50,24 +54,23 @@ public class AuthService
         Console.WriteLine($"Model: {model}");
         Console.WriteLine($"(AuthService) Logging in user: {model.Username}");
 
-        // var user = await _userManager.FindByNameAsync(model.Username);
+        var user = await _userManager.FindByNameAsync(model.Username);
         //var user = await _userManager.FindUserWithLogging(model.UserName);
-        //Console.WriteLine($"FindByNameAsync returned: {user != null}");
+        Console.WriteLine($"FindByNameAsync returned: {user != null}");
 
-        
-        // if (user == null)
-        // {
-        //     _logger.LogError("User not found.");
-        //     return null;
-        // }
-        //Console.WriteLine($"Logging in user: {user.UserName}");
+        if (user == null)
+        {
+            _logger.LogError("User not found.");
+            return null;
+        }
+        Console.WriteLine($"Logging in user: {user.UserName}");
 
-        // if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
-        // {
+        if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
+        {
             Console.WriteLine("Attempting to get token for user.");
-        //     return await GetToken(user);
-        // }
-        // _logger.LogError("Error logging in.");
+            //return await GetToken(user);
+        }
+        _logger.LogError("Error logging in.");
         return null;
     }
 
@@ -125,41 +128,107 @@ public class AuthService
     //     }
     // }
 
-    // public async Task<User?> Register([FromBody] PasswordDTO model, string token, string username)
-    // {
-    //     var decodedUsername = Uri.UnescapeDataString(username);
-    //     var user = await _userManager.FindByNameAsync(decodedUsername);
-    //     if (user == null)
-    //     {
-    //         _logger.LogError("Error finding user.");
-    //         return null;
-    //     }
-    //     var decodedToken = Uri.UnescapeDataString(token);
-    //     var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
-    //     if (result.Succeeded)
-    //     {
-    //         user.SecurityStamp = Guid.NewGuid().ToString();
-    //         var newResult = await _userManager.AddPasswordAsync(user, model.NewPassword);
-    //         if (!newResult.Succeeded)
-    //         {
-    //             _logger.LogError("Error registering user.");
-    //             return null;
-    //         }
-    //         user.LastPasswordReset = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Utc);
-    //         var updateResult = await _userManager.UpdateAsync(user);
-    //         if (!updateResult.Succeeded)
-    //         {
-    //             _logger.LogError("Error updating password reset date time on user.");
-    //             return null;
-    //         }
-    //         var roles = await _userManager.GetRolesAsync(user);
-    //         var retUser = new User(user);
-    //         retUser.Roles = roles.Cast<string>().ToArray();
-    //         return retUser;
-    //     }
-    //     _logger.LogError("Error confirming email token.");
-    //     return null;
-    // }
+    public async Task<UserDTO?> RegisterSystemUser(RegisterSystemUserModel model)
+    {
+        Console.WriteLine("=== REGISTER SYSTEM USER (AuthService) ===");
+        if (model == null)
+        {
+            _logger.LogError("Register model is null.");
+            Console.WriteLine("Register model is null.");
+        }
+        Console.WriteLine($"Registering new system user: {model.Email}");
+
+        // Create new ApplicationUser
+        var user = new ApplicationUser
+        {
+            UserName = model.Email,
+            Email = model.Email,
+            FirstName = model.FirstName,
+            LastName = model.LastName,
+            CompanyName = model.CompanyName,
+            JobTitle = model.JobTitle,
+            PhoneNumber = model.PhoneNumber,
+            EmailConfirmed = false, // Will need to confirm email
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Create the user with the generated password
+        var result = await _userManager.CreateAsync(user, model.Password);
+
+        if (!result.Succeeded)
+        {
+            _logger.LogError($"Failed to create user {model.Email}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            // throw new UserCreationException(result);
+        }
+
+        Console.WriteLine($"User created successfully: {user.Id}");
+
+        // Optionally assign default role
+        // await _userManager.AddToRoleAsync(user, "User");
+
+        // Generate email confirmation token (for later use)
+        var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+        // TODO: Send email with password and confirmation link
+        // await _emailService.SendWelcomeEmail(user.Email, model.Password, emailToken);
+
+        // Convert ApplicationUser to User, then to UserDTO
+        var userEntity = new User(user);
+
+        // Create UserDTO directly from ApplicationUser (since UserDTO constructor expects User)
+        var userDto = new UserDTO
+        {
+            Id = user.Id,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            UserName = user.UserName ?? "",
+            Email = user.Email ?? "",
+            CompanyName = user.CompanyName,
+            JobTitle = user.JobTitle,
+            PhoneNumber = user.PhoneNumber ?? "",
+            EmailConfirmed = user.EmailConfirmed,
+            EmailSent = user.EmailSent,
+            IsActive = user.IsActive,
+            Roles = new string[0] // Empty array for new users
+        };
+        return userDto;
+    }
+    public async Task<User?> Register([FromBody] PasswordDTO model, string token, string username)
+    {
+        var decodedUsername = Uri.UnescapeDataString(username);
+        var user = await _userManager.FindByNameAsync(decodedUsername);
+        if (user == null)
+        {
+            _logger.LogError("Error finding user.");
+            return null;
+        }
+        var decodedToken = Uri.UnescapeDataString(token);
+        var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+        if (result.Succeeded)
+        {
+            user.SecurityStamp = Guid.NewGuid().ToString();
+            var newResult = await _userManager.AddPasswordAsync(user, model.NewPassword);
+            if (!newResult.Succeeded)
+            {
+                _logger.LogError("Error registering user.");
+                return null;
+            }
+            user.LastPasswordReset = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Utc);
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                _logger.LogError("Error updating password reset date time on user.");
+                return null;
+            }
+            var roles = await _userManager.GetRolesAsync(user);
+            var retUser = new User(user);
+            //retUser.Roles = roles.ToArray();
+            return retUser;
+        }
+        _logger.LogError("Error confirming email token.");
+        return null;
+    }
 
     // public async Task<string?> SignInWithGoogle(string token)
     // {

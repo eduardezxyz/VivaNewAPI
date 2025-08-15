@@ -8,7 +8,7 @@ namespace NewVivaApi.Extensions
 {
     public static class ApplicationUserExtensions
     {
-        public static async Task<AspNetUserExtension?> GetExtensionAsync(this ApplicationUser au, AppDbContext? currentContext = null)
+        public static async Task<AspNetUserExtension?> GetExtensionAsync(this ApplicationUser au, IdentityDbContext? currentContext = null)
         {
             AspNetUserExtension? extension = null;
 
@@ -22,7 +22,7 @@ namespace NewVivaApi.Extensions
                     ?? throw new InvalidOperationException("ServiceLocator not initialized");
                     
                 using var scope = serviceProvider.CreateScope();
-                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
                 extension = await GetExtensionsFromEntityAsync(au.Id, context);
             }
 
@@ -30,18 +30,18 @@ namespace NewVivaApi.Extensions
         }
 
         // Synchronous version for compatibility
-        public static AspNetUserExtension? GetExtension(this ApplicationUser au, AppDbContext? currentContext = null)
+        public static AspNetUserExtension? GetExtension(this ApplicationUser au, IdentityDbContext? currentContext = null)
         {
             return GetExtensionAsync(au, currentContext).GetAwaiter().GetResult();
         }
 
-        private static async Task<AspNetUserExtension?> GetExtensionsFromEntityAsync(string userId, AppDbContext context)
+        private static async Task<AspNetUserExtension?> GetExtensionsFromEntityAsync(string userId, IdentityDbContext context)
         {
             return await context.AspNetUserExtensions
                 .FirstOrDefaultAsync(e => e.Id == userId);
         }
 
-        public static async Task<AspNetUserExtension?> CreateExtensionAsync(this ApplicationUser au, AppDbContext? currentContext = null)
+        public static async Task<AspNetUserExtension?> CreateExtensionAsync(this ApplicationUser au, IdentityDbContext? currentContext = null)
         {
             if (currentContext != null)
             {
@@ -53,18 +53,18 @@ namespace NewVivaApi.Extensions
                     ?? throw new InvalidOperationException("ServiceLocator not initialized");
                     
                 using var scope = serviceProvider.CreateScope();
-                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
                 return await CreateExtensionInEntityAsync(au.Id, context);
             }
         }
 
         // Synchronous version for compatibility
-        public static AspNetUserExtension? CreateExtension(this ApplicationUser au, AppDbContext? currentContext = null)
+        public static AspNetUserExtension? CreateExtension(this ApplicationUser au, IdentityDbContext? currentContext = null)
         {
             return CreateExtensionAsync(au, currentContext).GetAwaiter().GetResult();
         }
 
-        private static async Task<AspNetUserExtension?> CreateExtensionInEntityAsync(string userId, AppDbContext context)
+        private static async Task<AspNetUserExtension?> CreateExtensionInEntityAsync(string userId, IdentityDbContext context)
         {
             var existingCount = await context.AspNetUserExtensions
                 .CountAsync(e => e.Id == userId);
@@ -119,7 +119,7 @@ namespace NewVivaApi.Extensions
         /// <summary>
         /// Sets password reset token for the user
         /// </summary>
-        public static async Task<bool> SetPasswordResetTokenAsync(this ApplicationUser au, string token, DateTime expiration, AppDbContext? currentContext = null)
+        public static async Task<bool> SetPasswordResetTokenAsync(this ApplicationUser au, string token, DateTime expiration, IdentityDbContext? currentContext = null)
         {
             if (currentContext != null)
             {
@@ -131,12 +131,12 @@ namespace NewVivaApi.Extensions
                     ?? throw new InvalidOperationException("ServiceLocator not initialized");
                     
                 using var scope = serviceProvider.CreateScope();
-                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
                 return await SetPasswordResetTokenInEntityAsync(au.Id, token, expiration, context);
             }
         }
 
-        private static async Task<bool> SetPasswordResetTokenInEntityAsync(string userId, string token, DateTime expiration, AppDbContext context)
+        private static async Task<bool> SetPasswordResetTokenInEntityAsync(string userId, string token, DateTime expiration, IdentityDbContext context)
         {
             var extension = await context.AspNetUserExtensions.FirstOrDefaultAsync(e => e.Id == userId);
             
@@ -166,7 +166,7 @@ namespace NewVivaApi.Extensions
         /// <summary>
         /// Validates password reset token
         /// </summary>
-        public static async Task<bool> ValidatePasswordResetTokenAsync(this ApplicationUser au, string token, AppDbContext? currentContext = null)
+        public static async Task<bool> ValidatePasswordResetTokenAsync(this ApplicationUser au, string token, IdentityDbContext? currentContext = null)
         {
             var extension = await au.GetExtensionAsync(currentContext);
             
@@ -180,7 +180,7 @@ namespace NewVivaApi.Extensions
         /// <summary>
         /// Clears password reset token after successful reset
         /// </summary>
-        public static async Task<bool> ClearPasswordResetTokenAsync(this ApplicationUser au, AppDbContext? currentContext = null)
+        public static async Task<bool> ClearPasswordResetTokenAsync(this ApplicationUser au, IdentityDbContext? currentContext = null)
         {
             if (currentContext != null)
             {
@@ -192,12 +192,12 @@ namespace NewVivaApi.Extensions
                     ?? throw new InvalidOperationException("ServiceLocator not initialized");
                     
                 using var scope = serviceProvider.CreateScope();
-                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
                 return await ClearPasswordResetTokenInEntityAsync(au.Id, context);
             }
         }
 
-        private static async Task<bool> ClearPasswordResetTokenInEntityAsync(string userId, AppDbContext context)
+        private static async Task<bool> ClearPasswordResetTokenInEntityAsync(string userId, IdentityDbContext context)
         {
             var extension = await context.AspNetUserExtensions.FirstOrDefaultAsync(e => e.Id == userId);
             

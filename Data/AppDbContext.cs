@@ -2,11 +2,14 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using NewVivaApi.Models;
+using NewVivaApi.Authentication.Models; 
+//using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+//using NewVivaApi.Authentication.Models; // For ApplicationUser
+
 
 namespace NewVivaApi.Data;
 
-public partial class AppDbContext : DbContext
-{
+public partial class AppDbContext : DbContext{
     public AppDbContext()
     {
     }
@@ -17,16 +20,6 @@ public partial class AppDbContext : DbContext
     }
 
     public virtual DbSet<AdminUser> AdminUsers { get; set; }
-
-    public virtual DbSet<AspNetRole> AspNetRoles { get; set; }
-
-    public virtual DbSet<AspNetUser> AspNetUsers { get; set; }
-
-    public virtual DbSet<AspNetUserClaim> AspNetUserClaims { get; set; }
-
-    public virtual DbSet<AspNetUserExtension> AspNetUserExtensions { get; set; }
-
-    public virtual DbSet<AspNetUserLogin> AspNetUserLogins { get; set; }
 
     public virtual DbSet<Document> Documents { get; set; }
 
@@ -84,6 +77,8 @@ public partial class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        //base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<AdminUser>(entity =>
         {
             entity.Property(e => e.AdminUserId).HasColumnName("AdminUserID");
@@ -95,95 +90,11 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(128)
                 .HasColumnName("UserID");
 
-            entity.HasOne(d => d.User).WithMany(p => p.AdminUsers)
+            entity.HasOne<ApplicationUser>()  // Changed
+                .WithMany()                   // Changed
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_AdminUsers_AspNetUsers");
-        });
-
-        modelBuilder.Entity<AspNetRole>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK_dbo.AspNetRoles");
-
-            entity.HasIndex(e => e.Name, "RoleNameIndex").IsUnique();
-
-            entity.Property(e => e.Id).HasMaxLength(128);
-            entity.Property(e => e.Name).HasMaxLength(256);
-        });
-
-        modelBuilder.Entity<AspNetUser>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK_dbo.AspNetUsers");
-
-            entity.ToTable(tb => tb.HasTrigger("AspNetUsers_FlagResetPassword_I"));
-
-            entity.HasIndex(e => e.UserName, "UserNameIndex").IsUnique();
-
-            entity.Property(e => e.Id).HasMaxLength(128);
-            entity.Property(e => e.Email).HasMaxLength(256);
-            entity.Property(e => e.LockoutEndDateUtc).HasColumnType("datetime");
-            entity.Property(e => e.ResetPasswordOnLoginTf).HasColumnName("ResetPasswordOnLoginTF");
-            entity.Property(e => e.UserName).HasMaxLength(256);
-
-            entity.HasMany(d => d.Roles).WithMany(p => p.Users)
-                .UsingEntity<Dictionary<string, object>>(
-                    "AspNetUserRole",
-                    r => r.HasOne<AspNetRole>().WithMany()
-                        .HasForeignKey("RoleId")
-                        .HasConstraintName("FK_dbo.AspNetUserRoles_dbo.AspNetRoles_RoleId"),
-                    l => l.HasOne<AspNetUser>().WithMany()
-                        .HasForeignKey("UserId")
-                        .HasConstraintName("FK_dbo.AspNetUserRoles_dbo.AspNetUsers_UserId"),
-                    j =>
-                    {
-                        j.HasKey("UserId", "RoleId").HasName("PK_dbo.AspNetUserRoles");
-                        j.ToTable("AspNetUserRoles");
-                        j.HasIndex(new[] { "RoleId" }, "IX_RoleId");
-                        j.HasIndex(new[] { "UserId" }, "IX_UserId");
-                        j.IndexerProperty<string>("UserId").HasMaxLength(128);
-                        j.IndexerProperty<string>("RoleId").HasMaxLength(128);
-                    });
-        });
-
-        modelBuilder.Entity<AspNetUserClaim>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK_dbo.AspNetUserClaims");
-
-            entity.HasIndex(e => e.UserId, "IX_UserId");
-
-            entity.Property(e => e.UserId).HasMaxLength(128);
-
-            entity.HasOne(d => d.User).WithMany(p => p.AspNetUserClaims)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK_dbo.AspNetUserClaims_dbo.AspNetUsers_UserId");
-        });
-
-        modelBuilder.Entity<AspNetUserExtension>(entity =>
-        {
-            entity.ToTable(tb => tb.HasTrigger("AspNetUserExtensions_ClearExpired"));
-
-            entity.Property(e => e.Id).HasMaxLength(128);
-            entity.Property(e => e.PasswordResetTokenExpiration).HasColumnType("datetime");
-
-            entity.HasOne(d => d.IdNavigation).WithOne(p => p.AspNetUserExtension)
-                .HasForeignKey<AspNetUserExtension>(d => d.Id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_AspNetUserExtensions_AspNetUsers");
-        });
-
-        modelBuilder.Entity<AspNetUserLogin>(entity =>
-        {
-            entity.HasKey(e => new { e.LoginProvider, e.ProviderKey, e.UserId }).HasName("PK_dbo.AspNetUserLogins");
-
-            entity.HasIndex(e => e.UserId, "IX_UserId");
-
-            entity.Property(e => e.LoginProvider).HasMaxLength(128);
-            entity.Property(e => e.ProviderKey).HasMaxLength(128);
-            entity.Property(e => e.UserId).HasMaxLength(128);
-
-            entity.HasOne(d => d.User).WithMany(p => p.AspNetUserLogins)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK_dbo.AspNetUserLogins_dbo.AspNetUsers_UserId");
         });
 
         modelBuilder.Entity<Document>(entity =>
@@ -287,7 +198,8 @@ public partial class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_GeneralContractorUsers_GeneralContractors");
 
-            entity.HasOne(d => d.User).WithMany(p => p.GeneralContractorUsers)
+            entity.HasOne<ApplicationUser>()  // Changed
+                .WithMany()                   // Changed
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_GeneralContractorUsers_AspNetUsers");
@@ -575,8 +487,8 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.WebHookUrl)
                 .HasMaxLength(500)
                 .HasColumnName("WebHookURL");
-
-            entity.HasOne(d => d.User).WithMany(p => p.ServiceUsers)
+            entity.HasOne<ApplicationUser>()  // Changed
+                .WithMany()                   // Changed
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ServiceUsers_AspNetUsers");
@@ -670,7 +582,8 @@ public partial class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SubcontractorUsers_Subcontractors");
 
-            entity.HasOne(d => d.User).WithMany(p => p.SubcontractorUsers)
+            entity.HasOne<ApplicationUser>()  // Changed
+                .WithMany()                   // Changed
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SubcontractorUsers_AspNetUsers");
@@ -709,8 +622,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.PhoneNumber).HasMaxLength(100);
             entity.Property(e => e.UserName).HasMaxLength(256);
 
-            entity.HasOne(d => d.User).WithOne(p => p.UserProfile)
-                .HasForeignKey<UserProfile>(d => d.UserId)
+            entity.HasOne<ApplicationUser>()  // Changed
+                .WithMany()                   // Changed
+                .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_UserProfile_UserProfile");
         });
