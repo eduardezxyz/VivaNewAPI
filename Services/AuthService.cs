@@ -5,16 +5,22 @@ using NewVivaApi.Authentication;
 using NewVivaApi.Authentication.Models;
 // using backend.Services.Messaging;
 // using Google.Apis.Auth;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using NewVivaApi.Services;
+using Microsoft.AspNet.Identity; // Old Identity v2
+using Microsoft.EntityFrameworkCore;
+using NewVivaApi.Models;
+using NewVivaApi.Data; // Make sure this points to your AppDbContext namespace
 
-namespace NewVivaApi.Authentication.Services;
+namespace NewVivaApi.Services;
 public class AuthService
 {
+    private readonly AppDbContext _dbContext;
+    private readonly IConfiguration _config;
+
     // private readonly UserManager<ApplicationUser> _userManager;
     // private readonly IConfiguration _configuration;
     // private readonly ILogger<AuthService> _logger;
@@ -25,6 +31,8 @@ public class AuthService
     // private readonly AspNetUserService _aspNetUserService;
 
     public AuthService(
+        AppDbContext context,
+        IConfiguration config
         // UserManager<ApplicationUser> userManager,
         // ILogger<AuthService> logger,
         // IConfiguration configuration,
@@ -43,17 +51,66 @@ public class AuthService
         // _smsService = smsService;
         // _signInManager = signInManager;
         // _aspNetUserService = aspNetUserService;
+        _config = config;
+        _dbContext = context;
     }
 
-    public async Task<string?> Login([FromBody] LoginModel model)
+    public async Task<LoginResponse?> Login([FromBody] LoginModel model)
     {
-        // var user = await _userManager.FindByNameAsync(model.Username);
-        // if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
-        // {
-        //     return await GetToken(user);
-        // }
-        // _logger.LogError("Error logging in.");
+        if (string.IsNullOrWhiteSpace(model.Username) || string.IsNullOrWhiteSpace(model.Password))
+            return null;
+
+        var user = await _dbContext.AspNetUsers
+            .FirstOrDefaultAsync(u => u.UserName.ToLower() == model.Username.ToLower());
+
+        if (user == null)
+            return null;
+
+        var passwordHasher = new PasswordHasher();
+        var verificationResult = passwordHasher.VerifyHashedPassword(user.PasswordHash, model.Password);
+
+        if (verificationResult == PasswordVerificationResult.Success)
+        {
+            var token = GenerateJwtToken(user);
+
+            return new LoginResponse
+            {
+                access_token = token,
+                token_type = "bearer",
+                expires_in = 1209599,
+                userName = user.UserName,
+                Issued = DateTime.UtcNow.ToString("R"),
+                Expires = DateTime.UtcNow.AddDays(14).ToString("R")
+            };
+
+        }
+
         return null;
+    }
+
+    private string GenerateJwtToken(AspNetUser user)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.ASCII.GetBytes(_config["JWT:Secret"]);
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(ClaimTypes.NameIdentifier, user.Id)
+            }),
+            Expires = DateTime.UtcNow.AddDays(14),
+            Issuer = _config["JWT:ValidIssuer"],     // 👈 ADD THIS
+            Audience = _config["JWT:ValidAudience"], // 👈 ADD THIS
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(key),
+                SecurityAlgorithms.HmacSha256Signature
+            )
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        return tokenHandler.WriteToken(token);
     }
 
     // public async Task<bool> IsUserInactive(string email)

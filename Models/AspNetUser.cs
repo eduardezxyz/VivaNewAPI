@@ -21,8 +21,6 @@ public partial class AspNetUser
 
     public bool TwoFactorEnabled { get; set; }
 
-    public DateTime? LockoutEndDateUtc { get; set; }
-
     public bool LockoutEnabled { get; set; }
 
     public int AccessFailedCount { get; set; }

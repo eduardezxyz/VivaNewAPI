@@ -1,10 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 using System.Threading.Tasks;
-using NewVivaApi.Data; // Make sure this points to your AppDbContext namespace
-using NewVivaApi.Authentication.Services;
 using NewVivaApi.Authentication;
 using NewVivaApi.Models;
+using NewVivaApi.Services;
 using Microsoft.AspNet.Identity; // Old Identity v2
 using Microsoft.EntityFrameworkCore;
 
@@ -14,44 +13,21 @@ namespace NewVivaApi.Controllers;
 [ApiController]
 public class AuthController : ControllerBase
 {
-    private readonly AppDbContext _dbContext;
-
-    public AuthController(AppDbContext context)
+    private readonly AuthService _authService;
+    public AuthController(AuthService _service)
     {
-        _dbContext = context;
+        _authService = _service;
     }
 
     [HttpPost("Login")]
     public async Task<IActionResult> Login([FromBody] LoginModel model)
     {
-        if (string.IsNullOrEmpty(model.Username) || string.IsNullOrEmpty(model.Password))
-            return BadRequest("Username and password are required.");
+        var result = await _authService.Login(model);
 
-        var user = await _dbContext.AspNetUsers
-            .FirstOrDefaultAsync(u => u.UserName.ToLower() == model.Username.ToLower());
+        if (result == null)
+            return Unauthorized(new { message = "Invalid username or password." });
 
-        if (user == null)
-            return Unauthorized("Invalid username or password.");
-
-        // Use the legacy Identity v2 PasswordHasher
-        var passwordHasher = new PasswordHasher();
-        var verificationResult = passwordHasher.VerifyHashedPassword(user.PasswordHash, model.Password);
-
-        if (verificationResult == PasswordVerificationResult.Success)
-        {
-            // Return only safe user info
-            var userInfo = new
-            {
-                user.Id,
-                user.UserName,
-                user.Email,
-                user.PhoneNumber
-            };
-
-            return Ok(userInfo);
-        }
-
-        return Unauthorized("Invalid username or password.");
+        return Ok(result);
     }
 
 }

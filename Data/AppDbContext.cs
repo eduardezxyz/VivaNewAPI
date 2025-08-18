@@ -121,7 +121,6 @@ public partial class AppDbContext : DbContext
 
             entity.Property(e => e.Id).HasMaxLength(128);
             entity.Property(e => e.Email).HasMaxLength(256);
-            entity.Property(e => e.LockoutEndDateUtc).HasColumnType("datetime");
             entity.Property(e => e.ResetPasswordOnLoginTf).HasColumnName("ResetPasswordOnLoginTF");
             entity.Property(e => e.UserName).HasMaxLength(256);
 

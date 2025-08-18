@@ -77,6 +77,8 @@ namespace NewVivaApi.Controllers.Odata
             if (model == null)
                 return BadRequest();
 
+            Console.WriteLine("Hello from .NET 8!",model);
+
             return Ok(model);
         }
 
