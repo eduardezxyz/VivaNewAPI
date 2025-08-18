@@ -1,3 +1,6 @@
+using NewVivaApi.Authentication.Models;
+using NewVivaApi.Models;
+
 public static class PasswordGenerationService
 {
     public static string GeneratePassword(PasswordRequirements requirements)

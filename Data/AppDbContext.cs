@@ -21,6 +21,8 @@ public partial class AppDbContext : DbContext{
 
     public virtual DbSet<AdminUser> AdminUsers { get; set; }
 
+    //public virtual DbSet<ApplicationUser> AspNetUsers { get; set; }  // keep this here too
+
     public virtual DbSet<Document> Documents { get; set; }
 
     public virtual DbSet<DocumentsVw> DocumentsVws { get; set; }
@@ -78,6 +80,13 @@ public partial class AppDbContext : DbContext{
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         //base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<ApplicationUser>(b =>
+            {
+                b.ToTable("AspNetUsers");
+                b.HasKey(u => u.Id);
+                b.Property(u => u.Id).HasMaxLength(450); // Identity default PK size
+                // map any extra properties if you have constraints/lengths
+            });
 
         modelBuilder.Entity<AdminUser>(entity =>
         {
@@ -86,15 +95,14 @@ public partial class AppDbContext : DbContext{
             entity.Property(e => e.DeleteDt).HasColumnName("DeleteDT");
             entity.Property(e => e.LastUpdateDt).HasColumnName("LastUpdateDT");
             entity.Property(e => e.LastUpdateUser).HasMaxLength(250);
-            entity.Property(e => e.UserId)
-                .HasMaxLength(128)
-                .HasColumnName("UserID");
 
-            entity.HasOne<ApplicationUser>()  // Changed
-                .WithMany()                   // Changed
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_AdminUsers_AspNetUsers");
+            entity.Property(e => e.UserId).HasMaxLength(450).HasColumnName("UserID");
+
+            entity.HasOne(e => e.User)                 // ← use the navigation
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_AdminUsers_AspNetUsers");
         });
 
         modelBuilder.Entity<Document>(entity =>
@@ -180,26 +188,24 @@ public partial class AppDbContext : DbContext{
         {
             entity.Property(e => e.GeneralContractorUserId).HasColumnName("GeneralContractorUserID");
             entity.Property(e => e.CanApproveTf).HasColumnName("CanApproveTF");
-            entity.Property(e => e.CreateDt)
-                .HasDefaultValueSql("(getutcdate())")
-                .HasColumnName("CreateDT");
+            entity.Property(e => e.CreateDt).HasDefaultValueSql("(getutcdate())").HasColumnName("CreateDT");
             entity.Property(e => e.DeleteDt).HasColumnName("DeleteDT");
             entity.Property(e => e.GeneralContractorId).HasColumnName("GeneralContractorID");
-            entity.Property(e => e.LastUpdateDt)
-                .HasDefaultValueSql("(getutcdate())")
-                .HasColumnName("LastUpdateDT");
+            entity.Property(e => e.LastUpdateDt).HasDefaultValueSql("(getutcdate())").HasColumnName("LastUpdateDT");
             entity.Property(e => e.LastUpdateUser).HasMaxLength(250);
-            entity.Property(e => e.UserId)
-                .HasMaxLength(128)
-                .HasColumnName("UserID");
 
-            entity.HasOne(d => d.GeneralContractor).WithMany(p => p.GeneralContractorUsers)
+            // single config, and make it 450 to match AspNetUsers.Id
+            entity.Property(e => e.UserId).HasMaxLength(450).HasColumnName("UserID");
+
+            entity.HasOne(d => d.GeneralContractor)
+                .WithMany(p => p.GeneralContractorUsers)
                 .HasForeignKey(d => d.GeneralContractorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_GeneralContractorUsers_GeneralContractors");
 
-            entity.HasOne<ApplicationUser>()  // Changed
-                .WithMany()                   // Changed
+            // bind to the NAVIGATION, no HasPrincipalKey needed
+            entity.HasOne(d => d.User)
+                .WithMany()
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_GeneralContractorUsers_AspNetUsers");
@@ -481,15 +487,13 @@ public partial class AppDbContext : DbContext{
             entity.Property(e => e.DeleteDt).HasColumnName("DeleteDT");
             entity.Property(e => e.LastUpdateDt).HasColumnName("LastUpdateDT");
             entity.Property(e => e.LastUpdateUser).HasMaxLength(250);
-            entity.Property(e => e.UserId)
-                .HasMaxLength(128)
-                .HasColumnName("UserID");
-            entity.Property(e => e.WebHookUrl)
-                .HasMaxLength(500)
-                .HasColumnName("WebHookURL");
-            entity.HasOne<ApplicationUser>()  // Changed
-                .WithMany()                   // Changed
-                .HasForeignKey(d => d.UserId)
+            entity.Property(e => e.WebHookUrl).HasMaxLength(500).HasColumnName("WebHookURL");
+
+            entity.Property(e => e.UserId).HasMaxLength(450).HasColumnName("UserID");
+
+            entity.HasOne(e => e.User)                 // ← use the navigation
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ServiceUsers_AspNetUsers");
         });
@@ -564,27 +568,23 @@ public partial class AppDbContext : DbContext{
         modelBuilder.Entity<SubcontractorUser>(entity =>
         {
             entity.Property(e => e.SubcontractorUserId).HasColumnName("SubcontractorUserID");
-            entity.Property(e => e.CreateDt)
-                .HasDefaultValueSql("(getutcdate())")
-                .HasColumnName("CreateDT");
+            entity.Property(e => e.CreateDt).HasDefaultValueSql("(getutcdate())").HasColumnName("CreateDT");
             entity.Property(e => e.DeleteDt).HasColumnName("DeleteDT");
-            entity.Property(e => e.LastUpdateDt)
-                .HasDefaultValueSql("(getutcdate())")
-                .HasColumnName("LastUpdateDT");
+            entity.Property(e => e.LastUpdateDt).HasDefaultValueSql("(getutcdate())").HasColumnName("LastUpdateDT");
             entity.Property(e => e.LastUpdateUser).HasMaxLength(250);
             entity.Property(e => e.SubcontractorId).HasColumnName("SubcontractorID");
-            entity.Property(e => e.UserId)
-                .HasMaxLength(128)
-                .HasColumnName("UserID");
 
-            entity.HasOne(d => d.Subcontractor).WithMany(p => p.SubcontractorUsers)
-                .HasForeignKey(d => d.SubcontractorId)
+            entity.Property(e => e.UserId).HasMaxLength(450).HasColumnName("UserID");
+
+            entity.HasOne(e => e.Subcontractor)
+                .WithMany(p => p.SubcontractorUsers)
+                .HasForeignKey(e => e.SubcontractorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SubcontractorUsers_Subcontractors");
 
-            entity.HasOne<ApplicationUser>()  // Changed
-                .WithMany()                   // Changed
-                .HasForeignKey(d => d.UserId)
+            entity.HasOne(e => e.User)                 // ← use the navigation
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SubcontractorUsers_AspNetUsers");
         });
@@ -621,12 +621,16 @@ public partial class AppDbContext : DbContext{
             entity.Property(e => e.LastUpdateUser).HasMaxLength(250);
             entity.Property(e => e.PhoneNumber).HasMaxLength(100);
             entity.Property(e => e.UserName).HasMaxLength(256);
+            
+            // entity.HasOne<ApplicationUser>()  // Changed
+            //     .WithMany()                   // Changed
+            //     .HasForeignKey(d => d.UserId)
+            //     .OnDelete(DeleteBehavior.ClientSetNull)
+            //     .HasConstraintName("FK_UserProfile_UserProfile");
 
-            entity.HasOne<ApplicationUser>()  // Changed
-                .WithMany()                   // Changed
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_UserProfile_UserProfile");
+            entity.HasOne(p => p.User)
+                .WithOne(u => u.UserProfile)
+                .HasForeignKey<UserProfile>(p => p.UserId);
         });
 
         modelBuilder.Entity<UserProfilesVw>(entity =>

@@ -24,6 +24,8 @@ public class ApplicationUser : IdentityUser
     public string? JobTitle { get; set; }
     public bool ResetPasswordOnLoginTF { get; set; } = false;
     public DateTime? LockoutEndDateUtc { get; set; }
+    public virtual UserProfile? UserProfile { get; set; }
+
 
 
     /// <summary>

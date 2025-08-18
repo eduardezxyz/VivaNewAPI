@@ -10,6 +10,8 @@ using Microsoft.AspNet.Identity; // Old Identity v2
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using NewVivaApi.Authentication.Models;
+using NewVivaApi.Models;
+using Microsoft.AspNetCore.Identity;
 
 namespace NewVivaApi.Authentication;
 
@@ -20,12 +22,17 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _dbContext;
     private readonly AuthService _service;
     private readonly IdentityDbContext _identityDbContext;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
 
-    public AuthController(AppDbContext context, AuthService service, IdentityDbContext identityDbContext)
+    public AuthController(AppDbContext context, AuthService service, IdentityDbContext identityDbContext, Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager, IHttpContextAccessor httpContextAccessor)
     {
         _dbContext = context;
         _service = service;
         _identityDbContext = identityDbContext;
+        _dbContext = context;
+        _httpContextAccessor = httpContextAccessor;
+        _userManager = userManager;
     }
 
     [HttpPost("Login")]
@@ -62,7 +69,7 @@ public class AuthController : ControllerBase
 
         Console.WriteLine($"Password verification result: {verificationResult}");
 
-        if (verificationResult == PasswordVerificationResult.Success)
+        if (verificationResult == Microsoft.AspNet.Identity.PasswordVerificationResult.Success)
         {
             // Return only safe user info
             var userInfo = new
@@ -129,13 +136,26 @@ public class AuthController : ControllerBase
     {
         Console.WriteLine("=== REGISTER SYSTEM USER ===");
 
+        // if (User.Identity.IsAuthenticated && IsServiceUser())
+        // {
+        //     return BadRequest();
+        // }
+
+        // // Use ModelState validation instead of manual validation
+        // if (!ModelState.IsValid)
+        // {
+        //     return BadRequest(ModelState);
+        // }
+
         try
         {
+            Console.WriteLine("Extracting data from request...");
             // Extract data from JSON (avoiding model binding issues)
-            var model = ExtractRegisterModel(data);
+            var extractedData = ExtractRegisterData(data);
 
+            Console.WriteLine($"Extracted data: {extractedData.FirstName} {extractedData.LastName}, Email: {extractedData.Email}, Phone: {extractedData.PhoneNumber}, CompanyID: {extractedData.CompanyID}, isAdminTF: {extractedData.IsAdminTF}, isGCTF: {extractedData.IsGCTF}, isSCTF: {extractedData.IsSCTF}, gcApproveTF: {extractedData.GcApproveTF}");
             // Manual validation
-            var validationErrors = ValidateRegisterModel(model);
+            var validationErrors = ValidateRegisterData(extractedData);
             if (validationErrors.Any())
             {
                 return BadRequest(new { errors = validationErrors });
@@ -153,26 +173,37 @@ public class AuthController : ControllerBase
             };
 
             string generatedPassword = PasswordGenerationService.GeneratePassword(requirements);
-            model.Password = generatedPassword;
-            model.ConfirmPassword = generatedPassword;
+            Console.WriteLine($"Generated password for user: {extractedData.Email}");
 
-            Console.WriteLine($"Generated password for user: {model.Email}");
+            //Create model with proper constructor and dependencies
+            var model = new RegisterSystemUserModel(_dbContext, _userManager, _httpContextAccessor)
+            {
+                UserName = extractedData.Email,
+                FirstName = extractedData.FirstName,
+                LastName = extractedData.LastName,
+                PhoneNumber = extractedData.PhoneNumber,
+                Password = generatedPassword,
+                ConfirmPassword = generatedPassword,
+                CompanyID = extractedData.CompanyID,
+                isAdminTF = extractedData.IsAdminTF,
+                isGCTF = extractedData.IsGCTF,
+                isSCTF = extractedData.IsSCTF,
+                gcApproveTF = extractedData.GcApproveTF
+            };
 
             // Register the user
-            var result = await _service.RegisterSystemUser(model);
-            Console.WriteLine($"User registration result: {result?.Id}");
-
-            if (result == null)
-            {
-                return BadRequest(new { Type = "error", Message = "User registration failed!" });
-            }
+            var creatorUserName = User?.Identity?.Name ?? string.Empty;
+            Console.WriteLine($"Registering user: {extractedData.Email} by {creatorUserName}");
+            
+            await model.RegisterAsync(creatorUserName);
+            Console.WriteLine("User registration completed.");
 
             return Ok(new
             {
                 Type = "success",
                 Message = "User registered successfully!",
-                UserId = result.Id,
-                GeneratedPassword = generatedPassword // You might want to remove this in production
+                UserId = model.GetUserId(),
+                GeneratedPassword = generatedPassword // Remove in production
             });
         }
         catch (UserCreationException uce)
@@ -203,16 +234,47 @@ public class AuthController : ControllerBase
     }
 
     // Helper methods
-    private RegisterSystemUserModel ExtractRegisterModel(JsonElement data)
+    private RegisterDataModel ExtractRegisterData(JsonElement data)
     {
-        return new RegisterSystemUserModel
+        Console.WriteLine("Extracting register data from JSON...");
+        var firstName = GetJsonProperty(data, "firstName");
+        var lastName = GetJsonProperty(data, "lastName");
+        var email = GetJsonProperty(data, "email");
+        var phoneNumber = GetJsonProperty(data, "phoneNumber");
+        Console.WriteLine($"Extracted: {firstName} {lastName}, Email: {email}, Phone: {phoneNumber}");
+
+        int companyId = 0;
+        if (data.TryGetProperty("companyID", out var companyIdElement))
         {
-            FirstName = GetJsonProperty(data, "firstName"),
-            LastName = GetJsonProperty(data, "lastName"),
-            Email = GetJsonProperty(data, "email"),
-            CompanyName = GetJsonProperty(data, "companyName"),
-            JobTitle = GetJsonProperty(data, "jobTitle"),
-            PhoneNumber = GetJsonProperty(data, "phoneNumber")
+            if (companyIdElement.ValueKind == JsonValueKind.Number)
+            {
+                companyId = companyIdElement.GetInt32();
+            }
+            else if (companyIdElement.ValueKind == JsonValueKind.String)
+            {
+                int.TryParse(companyIdElement.GetString(), out companyId);
+            }
+        }
+        // Handle boolean properties properly
+        bool isAdminTF = GetJsonBoolean(data, "isAdminTF");
+        Console.WriteLine($"Parsed isAdminTF: {isAdminTF}");
+        bool isGCTF = GetJsonBoolean(data, "isGCTF");
+        Console.WriteLine($"Parsed isGCTF: {isGCTF}");
+        bool isSCTF = GetJsonBoolean(data, "isSCTF");
+        Console.WriteLine($"Parsed isSCTF: {isSCTF}");
+        bool gcApproveTF = GetJsonBoolean(data, "gcApproveTF");
+        Console.WriteLine($"Parsed gcApproveTF: {gcApproveTF}");
+        return new RegisterDataModel
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Email = email,
+            PhoneNumber = phoneNumber,
+            CompanyID = companyId,
+            IsAdminTF = isAdminTF,
+            IsGCTF = isGCTF,
+            IsSCTF = isSCTF,
+            GcApproveTF = gcApproveTF
         };
     }
 
@@ -221,22 +283,58 @@ public class AuthController : ControllerBase
         return element.TryGetProperty(propertyName, out var prop) ? prop.GetString() ?? "" : "";
     }
 
-    private List<string> ValidateRegisterModel(RegisterSystemUserModel model)
+    // New helper method to handle boolean properties correctly
+    private bool GetJsonBoolean(JsonElement element, string propertyName)
+    {
+        if (element.TryGetProperty(propertyName, out var prop))
+        {
+            if (prop.ValueKind == JsonValueKind.True)
+                return true;
+            else if (prop.ValueKind == JsonValueKind.False)
+                return false;
+            else if (prop.ValueKind == JsonValueKind.String)
+            {
+                // Handle string representations of booleans
+                bool.TryParse(prop.GetString(), out bool result);
+                return result;
+            }
+        }
+        return false; // Default to false if property doesn't exist or can't be parsed
+    }
+
+    //validation for new data model
+    private List<string> ValidateRegisterData(RegisterDataModel data)
     {
         var errors = new List<string>();
 
-        if (string.IsNullOrWhiteSpace(model.FirstName))
+        if (string.IsNullOrWhiteSpace(data.FirstName))
             errors.Add("First name is required");
 
-        if (string.IsNullOrWhiteSpace(model.LastName))
+        if (string.IsNullOrWhiteSpace(data.LastName))
             errors.Add("Last name is required");
 
-        if (string.IsNullOrWhiteSpace(model.Email))
+        if (string.IsNullOrWhiteSpace(data.Email))
             errors.Add("Email is required");
-        else if (!IsValidEmail(model.Email))
+        else if (!IsValidEmail(data.Email))
             errors.Add("Invalid email format");
 
+        // Validate that at least one role is selected
+        if (!data.IsAdminTF && !data.IsGCTF && !data.IsSCTF)
+            errors.Add("At least one role must be selected (Admin, General Contractor, or Subcontractor)");
+
+        // CompanyID is required for GC and SC roles
+        if ((data.IsGCTF || data.IsSCTF) && data.CompanyID <= 0)
+            errors.Add("CompanyID is required when assigning General Contractor or Subcontractor roles");
+
         return errors;
+    }
+
+    // Helper method to check if user is a service user
+    private bool IsServiceUser()
+    {
+        // Implement your service user check logic here
+        // This could check claims, roles, or other identity properties
+        return User.IsInRole("ServiceUser") || User.HasClaim("UserType", "Service");
     }
 
     private bool IsValidEmail(string email)
@@ -270,15 +368,15 @@ public class AuthController : ControllerBase
     //     }
     //     return Ok(new DataResponse<string> { Type = "success", Message = "Impersonation token created successfully!", Data = impersonationToken });
     // }
-    
-    private PasswordVerificationResult VerifyPasswordWithDetection(ApplicationUser user, string password)
+
+    private Microsoft.AspNet.Identity.PasswordVerificationResult VerifyPasswordWithDetection(ApplicationUser user, string password)
     {
         // Detect hash format
         if (user.PasswordHash.StartsWith("AQAAAA")) // Modern ASP.NET Core format
         {
             Console.WriteLine("Detected modern hash format");
             var modernHasher = new Microsoft.AspNetCore.Identity.PasswordHasher<ApplicationUser>();
-            return (PasswordVerificationResult)modernHasher.VerifyHashedPassword(user, user.PasswordHash, password);
+            return (Microsoft.AspNet.Identity.PasswordVerificationResult)modernHasher.VerifyHashedPassword(user, user.PasswordHash, password);
         }
         else // Legacy format (usually base64 without the AQ prefix)
         {
@@ -287,12 +385,25 @@ public class AuthController : ControllerBase
             var result = legacyHasher.VerifyHashedPassword(user.PasswordHash, password);
             Console.WriteLine($"Legacy verification result: {result}");
 
-            var verificationResult = result == PasswordVerificationResult.Success ?
-                PasswordVerificationResult.SuccessRehashNeeded : result;
+            var verificationResult = result == Microsoft.AspNet.Identity.PasswordVerificationResult.Success ?
+                Microsoft.AspNet.Identity.PasswordVerificationResult.SuccessRehashNeeded : result;
             Console.WriteLine($"Legacy verification result: {verificationResult}");
 
             return result;
         }
     }
 
+}
+
+public class RegisterDataModel
+{
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public string Email { get; set; }
+    public string PhoneNumber { get; set; }
+    public int CompanyID { get; set; }
+    public bool IsAdminTF { get; set; }
+    public bool IsGCTF { get; set; }
+    public bool IsSCTF { get; set; }
+    public bool GcApproveTF { get; set; }
 }

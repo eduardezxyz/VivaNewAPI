@@ -11,6 +11,7 @@ using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using NewVivaApi.Services;
+using NewVivaApi.Models;
 
 namespace NewVivaApi.Authentication;
 public class AuthService
@@ -128,73 +129,73 @@ public class AuthService
     //     }
     // }
 
-    public async Task<UserDTO?> RegisterSystemUser(RegisterSystemUserModel model)
-    {
-        Console.WriteLine("=== REGISTER SYSTEM USER (AuthService) ===");
-        if (model == null)
-        {
-            _logger.LogError("Register model is null.");
-            Console.WriteLine("Register model is null.");
-        }
-        Console.WriteLine($"Registering new system user: {model.Email}");
+    // public async Task<UserDTO?> RegisterSystemUser(RegisterSystemUserModel model) //NOT USED
+    // {
+    //     Console.WriteLine("=== REGISTER SYSTEM USER (AuthService) ===");
+    //     if (model == null)
+    //     {
+    //         _logger.LogError("Register model is null.");
+    //         Console.WriteLine("Register model is null.");
+    //     }
+    //     Console.WriteLine($"Registering new system user: {model.Email}");
 
-        // Create new ApplicationUser
-        var user = new ApplicationUser
-        {
-            UserName = model.Email,
-            Email = model.Email,
-            FirstName = model.FirstName,
-            LastName = model.LastName,
-            CompanyName = model.CompanyName,
-            JobTitle = model.JobTitle,
-            PhoneNumber = model.PhoneNumber,
-            EmailConfirmed = false, // Will need to confirm email
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
+    //     // Create new ApplicationUser
+    //     var user = new ApplicationUser
+    //     {
+    //         UserName = model.Email,
+    //         Email = model.Email,
+    //         FirstName = model.FirstName,
+    //         LastName = model.LastName,
+    //         CompanyName = model.CompanyName,
+    //         JobTitle = model.JobTitle,
+    //         PhoneNumber = model.PhoneNumber,
+    //         EmailConfirmed = false, // Will need to confirm email
+    //         IsActive = true,
+    //         CreatedAt = DateTime.UtcNow
+    //     };
 
-        // Create the user with the generated password
-        var result = await _userManager.CreateAsync(user, model.Password);
+    //     // Create the user with the generated password
+    //     var result = await _userManager.CreateAsync(user, model.Password);
 
-        if (!result.Succeeded)
-        {
-            _logger.LogError($"Failed to create user {model.Email}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
-            // throw new UserCreationException(result);
-        }
+    //     if (!result.Succeeded)
+    //     {
+    //         _logger.LogError($"Failed to create user {model.Email}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+    //         // throw new UserCreationException(result);
+    //     }
 
-        Console.WriteLine($"User created successfully: {user.Id}");
+    //     Console.WriteLine($"User created successfully: {user.Id}");
 
-        // Optionally assign default role
-        // await _userManager.AddToRoleAsync(user, "User");
+    //     // Optionally assign default role
+    //     // await _userManager.AddToRoleAsync(user, "User");
 
-        // Generate email confirmation token (for later use)
-        var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+    //     // Generate email confirmation token (for later use)
+    //     var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-        // TODO: Send email with password and confirmation link
-        // await _emailService.SendWelcomeEmail(user.Email, model.Password, emailToken);
+    //     // TODO: Send email with password and confirmation link
+    //     // await _emailService.SendWelcomeEmail(user.Email, model.Password, emailToken);
 
-        // Convert ApplicationUser to User, then to UserDTO
-        var userEntity = new User(user);
+    //     // Convert ApplicationUser to User, then to UserDTO
+    //     var userEntity = new User(user);
 
-        // Create UserDTO directly from ApplicationUser (since UserDTO constructor expects User)
-        var userDto = new UserDTO
-        {
-            Id = user.Id,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            UserName = user.UserName ?? "",
-            Email = user.Email ?? "",
-            CompanyName = user.CompanyName,
-            JobTitle = user.JobTitle,
-            PhoneNumber = user.PhoneNumber ?? "",
-            EmailConfirmed = user.EmailConfirmed,
-            EmailSent = user.EmailSent,
-            IsActive = user.IsActive,
-            Roles = new string[0] // Empty array for new users
-        };
-        return userDto;
-    }
-    public async Task<User?> Register([FromBody] PasswordDTO model, string token, string username)
+    //     // Create UserDTO directly from ApplicationUser (since UserDTO constructor expects User)
+    //     var userDto = new UserDTO
+    //     {
+    //         Id = user.Id,
+    //         FirstName = user.FirstName,
+    //         LastName = user.LastName,
+    //         UserName = user.UserName ?? "",
+    //         Email = user.Email ?? "",
+    //         CompanyName = user.CompanyName,
+    //         JobTitle = user.JobTitle,
+    //         PhoneNumber = user.PhoneNumber ?? "",
+    //         EmailConfirmed = user.EmailConfirmed,
+    //         EmailSent = user.EmailSent,
+    //         IsActive = user.IsActive,
+    //         Roles = new string[0] // Empty array for new users
+    //     };
+    //     return userDto;
+    // }
+    public async Task<User?> Register([FromBody] PasswordDTO model, string token, string username) //NOT USED
     {
         var decodedUsername = Uri.UnescapeDataString(username);
         var user = await _userManager.FindByNameAsync(decodedUsername);
