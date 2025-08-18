@@ -42,11 +42,27 @@ namespace NewVivaApi.Controllers.Odata
         // }
 
         [EnableQuery]
-        public ActionResult<IQueryable<GeneralContractorsVw>> Get()
+        [HttpGet]
+        public ActionResult Get()
         {
-            var model = _context.GeneralContractorsVws.OrderBy(g => g.GeneralContractorId);
-            if (model == null)
-                return BadRequest();
+            var model = _context.GeneralContractorsVws
+                .OrderBy(g => g.GeneralContractorId)
+                .Select(g => new
+                {
+                    GeneralContractorID = g.GeneralContractorId,
+                    GeneralContractorName = g.GeneralContractorName,
+                    VivaGeneralContractorID = g.VivaGeneralContractorId,
+                    StatusID = g.StatusId,
+                    JsonAttributes = g.JsonAttributes,
+                    LogoImage = g.LogoImage,
+                    CreatedByUser = g.CreatedByUser,
+                    DommainName = g.DommainName,
+                    NumSubs = g.NumSubs,
+                    Outstanding = g.Outstanding
+                });
+
+            if (!model.Any())
+                return BadRequest("No records found.");
 
             return Ok(model);
         }

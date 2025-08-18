@@ -73,7 +73,7 @@ namespace NewVivaApi.Controllers.Odata
         }
 
         [EnableQuery]
-        public ActionResult<IQueryable<SubcontractorProjectsVw>> Get()
+        public ActionResult Get()
         {
             // Temporarily comment out auth check
             /*
@@ -83,7 +83,23 @@ namespace NewVivaApi.Controllers.Odata
             }
             */
 
-            var model = _context.SubcontractorProjectsVws.OrderBy(sp => sp.SubcontractorProjectId);
+            var model = _context.SubcontractorProjectsVws
+                .OrderBy(sp => sp.SubcontractorProjectId)
+                .Select(sp => new
+                {
+                    SubcontractorProjectID = sp.SubcontractorProjectId,
+                    SubcontractorID = sp.SubcontractorId,
+                    ProjectID = sp.ProjectId,
+                    ProjectName = sp.ProjectName,
+                    GeneralContractorID = sp.GeneralContractorId,
+                    DiscountPct = sp.DiscountPct,
+                    JsonAttributes = sp.JsonAttributes ?? null,
+                    StatusID = sp.StatusId,
+                    SubcontractorName = sp.SubcontractorName,
+                    ContactEmail = sp.ContactEmail,
+                    Contact = sp.Contact
+                });
+
             if (model == null)
                 return BadRequest();
 
@@ -102,8 +118,6 @@ namespace NewVivaApi.Controllers.Odata
             */
 
             var model = _context.SubcontractorProjectsVws.FirstOrDefault(sp => sp.SubcontractorProjectId == key);
-            Console.WriteLine($"Get SubcontractorProject with ID: {key}");
-            Console.WriteLine($"Model: {JsonSerializer.Serialize(model)}");
             if (model == null)
                 return NotFound();
 
