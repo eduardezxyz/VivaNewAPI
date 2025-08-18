@@ -14,7 +14,6 @@ using Microsoft.AspNetCore.OData.Results;
 using Microsoft.OData;
 using NewVivaApi.Data;
 using NewVivaApi.Models;
-using System.Text.Json;
 using AutoMapper;
 
 namespace NewVivaApi.Controllers.Odata
@@ -71,9 +70,20 @@ namespace NewVivaApi.Controllers.Odata
         */
 
         [EnableQuery]
-        public ActionResult<IQueryable<SubcontractorsVw>> Get()
+        public ActionResult Get()
         {
-            var model = _context.SubcontractorsVws.OrderBy(s => s.SubcontractorId);
+            var model = _context.SubcontractorsVws  
+                .OrderBy(s => s.SubcontractorId)
+                .Select(s => new
+                {
+                    SubcontractorID = s.SubcontractorId,
+                    SubcontractorName = s.SubcontractorName,
+                    VivaSubcontractorID = s.VivaSubcontractorId,
+                    StatusID = s.StatusId,
+                    CreatedByUser = s.CreatedByUser,
+                    JsonAttributes = s.JsonAttributes
+                });
+
             if (model == null)
                 return BadRequest();
 
@@ -83,7 +93,18 @@ namespace NewVivaApi.Controllers.Odata
         [EnableQuery]
         public ActionResult<SubcontractorsVw> Get([FromRoute] int key)
         {
-            var model = _context.SubcontractorsVws.FirstOrDefault(s => s.SubcontractorId == key);
+            var model = _context.SubcontractorsVws
+                .Where(s => s.SubcontractorId == key)
+                .Select(s => new
+                {
+                    SubcontractorID = s.SubcontractorId,
+                    SubcontractorName = s.SubcontractorName,
+                    VivaSubcontractorID = s.VivaSubcontractorId,
+                    StatusID = s.StatusId,
+                    CreatedByUser = s.CreatedByUser,
+                    JsonAttributes = s.JsonAttributes
+                })
+                .FirstOrDefault(); 
             if (model == null)
                 return NotFound();
 

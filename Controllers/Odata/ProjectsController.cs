@@ -25,9 +25,25 @@ public class ProjectsController : ODataController
     }
 
     [EnableQuery]
-    public ActionResult<IQueryable<ProjectsVw>> Get()
+    [HttpGet]
+    public ActionResult Get()
     {
-        var model = _context.ProjectsVws.OrderBy(p => p.ProjectName);
+        var model = _context.ProjectsVws
+            .Select(p => new
+            {
+                ProjectID = p.ProjectId,
+                VivaProjectID = p.VivaProjectId,
+                GeneralContractorID = p.GeneralContractorId,
+                StartDT = p.StartDt,
+                StatusID = p.StatusId,
+                JsonAttributes = p.JsonAttributes,
+                ProjectName = p.ProjectName,
+                UnpaidBalance = p.UnpaidBalance
+            });
+
+        if (!model.Any())
+            return BadRequest("No records found.");
+
         return Ok(model);
     }
 

@@ -80,19 +80,28 @@ namespace NewVivaApi.Controllers.OData
 
 
         [EnableQuery]
-        public ActionResult<PayAppsVw> Get()
+        [HttpGet]
+        public ActionResult Get()
         {
-            //auth check
-            /*
-            if (User.Identity.IsServiceUser())
-            {
-                return null;
-            }
-            */
+            var model = _context.PayAppsVws
+                .Select(p => new 
+                {
+                    PayAppID = p.PayAppId,
+                    VivaPayAppID = p.VivaPayAppId,
+                    SubcontractorProjectID = p.SubcontractorProjectId,
+                    ProjectID = p.ProjectId,
+                    SubcontractorID = p.SubcontractorId,
+                    GeneralContractorID = p.GeneralContractorId,
+                    RequestedAmount = p.RequestedAmount,
+                    ApprovedAmount = p.ApprovedAmount,
+                    StatusID = p.StatusId,
+                    JsonAttributes = p.JsonAttributes,
+                    ApprovalDt = p.ApprovalDt,
+                    CreatedByUser = p.CreatedByUser
+                });
 
-            var model = _context.PayAppsVws.OrderBy(p => p.PayAppId);
-            if (model == null)
-                return BadRequest();
+            if (!model.Any())
+                return BadRequest("No records found.");
 
             return Ok(model);
         }

@@ -14,6 +14,7 @@ using NewVivaApi.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,18 +25,34 @@ if (string.IsNullOrEmpty(connectionString))
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add Identity DbContext (separate from business DbContext)
-builder.Services.AddDbContext<NewVivaApi.Authentication.Models.IdentityDbContext>(options =>
-    options.UseSqlServer(connectionString));
+// ----------------------
+// 1. Configure CORS
+// ----------------------
+var MyAllowAngularApp = "_myAllowAngularApp";
 
-// Add controllers
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: MyAllowAngularApp,
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:4200") // Angular app origin
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials(); // 👈 important
+        });
+});
+
+// ----------------------
+// Add Controllers + OData
+// ----------------------
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        options.JsonSerializerOptions.PropertyNamingPolicy = null;
     })
     .AddOData(options => options
         .Select()
@@ -58,49 +75,58 @@ builder.Services.AddIdentity<ApplicationUser, Role>()
 //     .AddEntityFrameworkStores<AppDbContext>()
 //     .AddDefaultTokenProviders();
 
-builder.Services.AddAuthentication(options =>
-        {
-            // options.DefaultAuthenticateScheme = "JWT_OR_COOKIE";
-            // options.DefaultChallengeScheme = "JWT_OR_COOKIE";
-            // options.DefaultScheme = "JWT_OR_COOKIE";
-            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-		})
+// ----------------------
+// Services
+// ----------------------
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddHttpContextAccessor();
 
-        // Adding Jwt Bearer  
-        .AddJwtBearer(options =>
-        {
-            options.SaveToken = true;
-            options.RequireHttpsMetadata = false;
-            options.TokenValidationParameters = new TokenValidationParameters()
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidAudience = builder.Configuration["JWT:ValidAudience"],
-                ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
-            };
-        });
+// ----------------------
+// JWT Authentication
+// ----------------------
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.SaveToken = true;
+    options.RequireHttpsMetadata = false;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["JWT:ValidAudience"],
+        ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
+    };
+});
 
 builder.Services.AddAuthorization();
 
+// ----------------------
+// Swagger
+// ----------------------
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "NewViva API", Version = "v1" });
-    
-    // Add JWT authentication to Swagger
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "NewVivaApi", Version = "v1" });
+
+    // Add JWT Authentication to Swagger
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
         Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http, // change from ApiKey → Http
+        Scheme = "bearer",
+        BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Description = "Enter 'Bearer' followed by your JWT token"
     });
 
-    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement()
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
     {
         {
             new Microsoft.OpenApi.Models.OpenApiSecurityScheme
@@ -109,33 +135,36 @@ builder.Services.AddSwaggerGen(c =>
                 {
                     Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
                     Id = "Bearer"
-                },
-                Scheme = "oauth2",
-                Name = "Bearer",
-                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                }
             },
-            new List<string>()
+            Array.Empty<string>()
         }
     });
 });
+
 builder.Services.AddAutoMapper(typeof(AutoMapperConfig));
-builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
 NewVivaApi.Extensions.ServiceLocator.Current = app.Services;
 
+NewVivaApi.Extensions.ServiceLocator.Current = app.Services;
+
+// ----------------------
+// Middleware Pipeline
+// ----------------------
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// Enable CORS **before** authentication & authorization
+app.UseCors(MyAllowAngularApp);
+
 app.UseHttpsRedirection();
 
-// 2. Add authentication middleware
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.MapControllers();
@@ -143,34 +172,27 @@ app.MapControllers();
 
 app.Run();
 
+// ----------------------
 // EDM Model for OData
+// ----------------------
 static IEdmModel GetEdmModel()
 {
     var builder = new ODataConventionModelBuilder();
-    
-    builder.EntitySet<ProjectsVw>("Projects")
-        .EntityType.HasKey(p => p.ProjectId);
-        
-    builder.EntitySet<PayAppsVw>("PayApps")
-        .EntityType.HasKey(p => p.PayAppId);
 
-    builder.EntitySet<SubcontractorsVw>("Subcontractors")
-        .EntityType.HasKey(s => s.SubcontractorId);
-
-    builder.EntitySet<SubcontractorProjectsVw>("SubcontractorProjects")
-        .EntityType.HasKey(sp => sp.SubcontractorProjectId);
-    
-    builder.EntitySet<GeneralContractorsVw>("GeneralContractors")
-        .EntityType.HasKey(g => g.GeneralContractorId);
-
-    builder.EntitySet<PayAppHistoryVw>("PayAppHistory")
-        .EntityType.HasKey(h => h.PayAppHistoryId);
+    builder.EntitySet<ProjectsVw>("Projects").EntityType.HasKey(p => p.ProjectId);
+    builder.EntitySet<PayAppsVw>("PayApps").EntityType.HasKey(p => p.PayAppId);
+    builder.EntitySet<SubcontractorsVw>("Subcontractors").EntityType.HasKey(s => s.SubcontractorId);
+    builder.EntitySet<SubcontractorProjectsVw>("SubcontractorProjects").EntityType.HasKey(sp => sp.SubcontractorProjectId);
+    builder.EntitySet<GeneralContractorsVw>("GeneralContractors").EntityType.HasKey(g => g.GeneralContractorId);
+    builder.EntitySet<PayAppHistoryVw>("PayAppHistory").EntityType.HasKey(h => h.PayAppHistoryId);
+    builder.EntitySet<UserProfilesVw>("UserProfiles").EntityType.HasKey(up => up.UserId);
+    builder.EntitySet<DocumentsVw>("Documents").EntityType.HasKey(d => d.DocumentId);
 
     builder.EntitySet<UserProfilesVw>("UserProfiles")
         .EntityType.HasKey(up => up.UserId);
 
-    builder.EntitySet<DocumentsVw>("Documents")
-        .EntityType.HasKey(d => d.DocumentId);
+    builder.EntitySet<PayAppPaymentsVw>("PayAppPayments")
+        .EntityType.HasKey(p => p.PaymentId);
 
     builder.EntitySet<UserProfilesVw>("UserProfiles")
         .EntityType.HasKey(up => up.UserId);

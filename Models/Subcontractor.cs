@@ -1,16 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace NewVivaApi.Models;
 
 public partial class Subcontractor
 {
+    [JsonPropertyName("SubcontractorID")]
     public int SubcontractorId { get; set; }
 
     public string SubcontractorName { get; set; } = null!;
 
+    [JsonPropertyName("VivaSubcontractorID")]
     public string? VivaSubcontractorId { get; set; }
 
+    [JsonPropertyName("StatusID")]
     public int StatusId { get; set; }
 
     public string? JsonAttributes { get; set; }
