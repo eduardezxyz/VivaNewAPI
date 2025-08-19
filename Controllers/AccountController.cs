@@ -242,5 +242,18 @@ namespace NewVivaApi.Controllers
                 return false;
             }
         }
+
+        public class RegisterDataModel
+        {
+            public string FirstName { get; set; }
+            public string LastName { get; set; }
+            public string Email { get; set; }
+            public string PhoneNumber { get; set; }
+            public int CompanyID { get; set; }
+            public bool IsAdminTF { get; set; }
+            public bool IsGCTF { get; set; }
+            public bool IsSCTF { get; set; }
+            public bool GcApproveTF { get; set; }
+        }
     }
 }
