@@ -55,16 +55,16 @@ namespace NewVivaApi.Controllers
                 userAccessProfile.CanApproveTF = true;
             }
             // // Build the response (example fields — adjust to match your needs)
-            var rex = new
-            {
-                CanApproveTF = true,
-                GeneralContractorID = (int?)null,
-                ResetPasswordOnLogin = false,
-                SubcontractorID = (int?)null,
-                UserId = userId,// "eb1d35d7-75a8-4176-996d-7580ddf75f8c",
-                UserName = "thomas.perez@integrait.io",
-                UserType = 1
-            };
+            // var rex = new
+            // {
+            //     CanApproveTF = true,
+            //     GeneralContractorID = (int?)null,
+            //     ResetPasswordOnLogin = false,
+            //     SubcontractorID = (int?)null,
+            //     UserId = userId,// "eb1d35d7-75a8-4176-996d-7580ddf75f8c",
+            //     UserName = "thomas.perez@integrait.io",
+            //     UserType = 1
+            // };
          
             return Ok(userAccessProfile);
         }

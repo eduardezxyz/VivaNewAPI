@@ -20,8 +20,10 @@ public class AuthService
 {
     private readonly AppDbContext _dbContext;
     private readonly IConfiguration _config;
-
-    // private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IHttpContextAccessor _contextAccessor;
+    private readonly AspNetUserService _aspNetUserService;
+    private readonly IdentityDbContext _identityDbContext;
+    private readonly UserManager<ApplicationUser> _userManager;
     // private readonly IConfiguration _configuration;
     // private readonly ILogger<AuthService> _logger;
     // private readonly IEmailService _service;
@@ -31,8 +33,9 @@ public class AuthService
     // private readonly AspNetUserService _aspNetUserService;
 
     public AuthService(
+        UserManager<ApplicationUser> userManager,
         AppDbContext context,
-        IConfiguration config
+        IConfiguration config,
         // UserManager<ApplicationUser> userManager,
         // ILogger<AuthService> logger,
         // IConfiguration configuration,
@@ -41,6 +44,8 @@ public class AuthService
         // TwilioService smsService,
         // SignInManager<ApplicationUser> signInManager,
         // AspNetUserService aspNetUserService
+        IdentityDbContext identityDbContext, 
+        AspNetUserService aspNetUserService
         )
     {
         // _userManager = userManager;
@@ -51,8 +56,11 @@ public class AuthService
         // _smsService = smsService;
         // _signInManager = signInManager;
         // _aspNetUserService = aspNetUserService;
+        _userManager = userManager;
         _config = config;
         _dbContext = context;
+        _aspNetUserService = aspNetUserService;
+        _identityDbContext = identityDbContext;
     }
 
     public async Task<LoginResponse?> Login([FromBody] LoginModel model)
@@ -111,6 +119,42 @@ public class AuthService
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
+    }
+
+    public async Task<User?> Register([FromBody] PasswordDTO model, string token, string username) //NOT USED
+    {
+        var decodedUsername = Uri.UnescapeDataString(username);
+        var user = await _userManager.FindByNameAsync(decodedUsername);
+        if (user == null)
+        {
+            _logger.LogError("Error finding user.");
+            return null;
+        }
+        var decodedToken = Uri.UnescapeDataString(token);
+        var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+        if (result.Succeeded)
+        {
+            user.SecurityStamp = Guid.NewGuid().ToString();
+            var newResult = await _userManager.AddPasswordAsync(user, model.NewPassword);
+            if (!newResult.Succeeded)
+            {
+                _logger.LogError("Error registering user.");
+                return null;
+            }
+            user.LastPasswordReset = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Utc);
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                _logger.LogError("Error updating password reset date time on user.");
+                return null;
+            }
+            var roles = await _userManager.GetRolesAsync(user);
+            var retUser = new User(user);
+            //retUser.Roles = roles.ToArray();
+            return retUser;
+        }
+        _logger.LogError("Error confirming email token.");
+        return null;
     }
 
     // public async Task<bool> IsUserInactive(string email)

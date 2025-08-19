@@ -15,29 +15,34 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register your AppDbContext with the DI container
+// ----------------------
+// DbContext
+// ----------------------
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddIdentity<ApplicationUser, Role>()
+    .AddEntityFrameworkStores<NewVivaApi.Authentication.Models.IdentityDbContext>()
+    .AddDefaultTokenProviders();
+
 // ----------------------
-// 1. Configure CORS
+// CORS for Angular
 // ----------------------
 var MyAllowAngularApp = "_myAllowAngularApp";
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: MyAllowAngularApp,
         policy =>
         {
-            policy.WithOrigins("http://localhost:4200") // Angular app origin
+            policy.WithOrigins("http://localhost:4200")
                 .AllowAnyHeader()
                 .AllowAnyMethod()
-                .AllowCredentials(); // 👈 important
+                .AllowCredentials();
         });
 });
 
 // ----------------------
-// Add Controllers + OData
+// Controllers + OData
 // ----------------------
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -52,7 +57,7 @@ builder.Services.AddControllers()
         .OrderBy()
         .Expand()
         .Count()
-        .SetMaxTop(100)
+        .SetMaxTop(1000) // merged from second file
         .AddRouteComponents("odata", GetEdmModel()));
 
 // ----------------------
@@ -60,6 +65,7 @@ builder.Services.AddControllers()
 // ----------------------
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddAutoMapper(typeof(AutoMapperConfig));
 
 // ----------------------
 // JWT Authentication
@@ -88,32 +94,32 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // ----------------------
-// Swagger
+// Swagger with JWT Support
 // ----------------------
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "NewVivaApi", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "NewVivaApi", Version = "v1" });
 
-    // Add JWT Authentication to Swagger
-    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    // JWT auth in Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http, // change from ApiKey → Http
+        Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        In = ParameterLocation.Header,
         Description = "Enter 'Bearer' followed by your JWT token"
     });
 
-    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            new OpenApiSecurityScheme
             {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                Reference = new OpenApiReference
                 {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
                 }
             },
@@ -121,8 +127,6 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
-
-builder.Services.AddAutoMapper(typeof(AutoMapperConfig));
 
 var app = builder.Build();
 
@@ -135,7 +139,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Enable CORS **before** authentication & authorization
+// Enable CORS before authentication
 app.UseCors(MyAllowAngularApp);
 
 app.UseHttpsRedirection();
@@ -154,6 +158,7 @@ static IEdmModel GetEdmModel()
 {
     var builder = new ODataConventionModelBuilder();
 
+    // From first file
     builder.EntitySet<ProjectsVw>("Projects").EntityType.HasKey(p => p.ProjectId);
     builder.EntitySet<PayAppsVw>("PayApps").EntityType.HasKey(p => p.PayAppId);
     builder.EntitySet<SubcontractorsVw>("Subcontractors").EntityType.HasKey(s => s.SubcontractorId);
@@ -162,6 +167,9 @@ static IEdmModel GetEdmModel()
     builder.EntitySet<PayAppHistoryVw>("PayAppHistory").EntityType.HasKey(h => h.PayAppHistoryId);
     builder.EntitySet<UserProfilesVw>("UserProfiles").EntityType.HasKey(up => up.UserId);
     builder.EntitySet<DocumentsVw>("Documents").EntityType.HasKey(d => d.DocumentId);
+
+    // Additional example from second file (already included above but keeping structure clean)
+    // builder.EntitySet<ProjectsVw>("Projects").EntityType.HasKey(p => p.ProjectId);
 
     return builder.GetEdmModel();
 }
