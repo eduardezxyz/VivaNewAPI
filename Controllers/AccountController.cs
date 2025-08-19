@@ -63,7 +63,7 @@ namespace NewVivaApi.Controllers
                 }
 
                 // Generate password
-                var requirements = new
+                var requirements = new PasswordRequirements
                 {
                     RequireNumber = true,
                     RequireSymbol = true,
@@ -77,7 +77,7 @@ namespace NewVivaApi.Controllers
                 Console.WriteLine($"Generated password for user: {extractedData.Email}");
 
                 //Create model with proper constructor and dependencies
-                var model = new RegisterSystemUserModel(_dbContext, _userManager, _httpContextAccessor)
+                var model = new RegisterSystemUserModel(_userManager, _dbContext, _httpContextAccessor)
                 {
                     UserName = extractedData.Email,
                     FirstName = extractedData.FirstName,
@@ -86,10 +86,10 @@ namespace NewVivaApi.Controllers
                     Password = generatedPassword,
                     ConfirmPassword = generatedPassword,
                     CompanyID = extractedData.CompanyID,
-                    isAdminTF = extractedData.IsAdminTF,
-                    isGCTF = extractedData.IsGCTF,
-                    isSCTF = extractedData.IsSCTF,
-                    gcApproveTF = extractedData.GcApproveTF
+                    IsAdminTF = extractedData.IsAdminTF,
+                    IsGCTF = extractedData.IsGCTF,
+                    IsSCTF = extractedData.IsSCTF,
+                    GcApproveTF = extractedData.GcApproveTF
                 };
 
                 // Register the user
