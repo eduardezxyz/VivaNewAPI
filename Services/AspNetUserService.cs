@@ -17,8 +17,8 @@ public class AspNetUserService
         _dbContext = dbContext;
     }
 
-    public async Task<AspNetUser?> FindUserByUserName(string username) {
-        return await _dbContext.AspNetUsers.FirstOrDefaultAsync<AspNetUser>( user => user.UserName == username );
-    }
+    // public async Task<AspNetUser?> FindUserByUserName(string username) {
+    //     return await _dbContext.AspNetUsers.FirstOrDefaultAsync<AspNetUser>( user => user.UserName == username );
+    // }
 
 }

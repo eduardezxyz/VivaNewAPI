@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.OData.Routing;
 using NewVivaApi.Services;
 using NewVivaApi.Authentication;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Identity;
+using NewVivaApi.Authentication.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 

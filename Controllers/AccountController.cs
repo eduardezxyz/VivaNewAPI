@@ -8,6 +8,7 @@ using System.Security.Claims;
 using NewVivaApi.Models;
 using NewVivaApi.Services;
 using System.Text.Json;
+using NewVivaApi.Authentication.Models;
 
 namespace NewVivaApi.Controllers
 {
@@ -16,17 +17,17 @@ namespace NewVivaApi.Controllers
     [Authorize]
     public class AccountController : ControllerBase
     {
-        // private readonly UserManager<ApplicationUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         // private readonly SignInManager<ApplicationUser> _signInManager;
         // private readonly IEmailSender _emailSender; // replace with your EmailService wrapper
 
         public AccountController(
-            // UserManager<ApplicationUser> userManager,
+            UserManager<ApplicationUser> userManager
             // SignInManager<ApplicationUser> signInManager
             // IEmailSender emailSender
             )
         {
-            // _userManager = userManager;
+            _userManager = userManager;
             // _signInManager = signInManager;
             // _emailSender = emailSender;
         }
@@ -62,7 +63,7 @@ namespace NewVivaApi.Controllers
                 }
 
                 // Generate password
-                var requirements = new PasswordRequirements
+                var requirements = new
                 {
                     RequireNumber = true,
                     RequireSymbol = true,

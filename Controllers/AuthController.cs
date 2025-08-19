@@ -19,15 +19,15 @@ public class AuthController : ControllerBase
         _authService = _service;
     }
 
-    [HttpPost("Login")]
-    public async Task<IActionResult> Login([FromBody] LoginModel model)
-    {
-        var result = await _authService.Login(model);
+    // [HttpPost("Login")]
+    // public async Task<IActionResult> Login([FromBody] LoginModel model)
+    // {
+    //     var result = await _authService.Login(model);
 
-        if (result == null)
-            return Unauthorized(new { message = "Invalid username or password." });
+    //     if (result == null)
+    //         return Unauthorized(new { message = "Invalid username or password." });
 
-        return Ok(result);
-    }
+    //     return Ok(result);
+    // }
 
 }

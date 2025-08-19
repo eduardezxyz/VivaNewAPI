@@ -6,13 +6,15 @@ using NewVivaApi.Authentication.Models;
 // using backend.Services.Messaging;
 // using Google.Apis.Auth;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using NewVivaApi.Services;
-using Microsoft.AspNet.Identity; // Old Identity v2
+//using Microsoft.AspNet.Identity; // Old Identity v2
 using Microsoft.EntityFrameworkCore;
 using NewVivaApi.Models;
+using NewVivaApi.Authentication.Models;
 using NewVivaApi.Data; // Make sure this points to your AppDbContext namespace
 
 namespace NewVivaApi.Services;
@@ -63,63 +65,63 @@ public class AuthService
         _identityDbContext = identityDbContext;
     }
 
-    public async Task<LoginResponse?> Login([FromBody] LoginModel model)
-    {
-        if (string.IsNullOrWhiteSpace(model.Username) || string.IsNullOrWhiteSpace(model.Password))
-            return null;
+    // public async Task<LoginResponse?> Login([FromBody] LoginModel model)
+    // {
+    //     if (string.IsNullOrWhiteSpace(model.Username) || string.IsNullOrWhiteSpace(model.Password))
+    //         return null;
 
-        var user = await _dbContext.AspNetUsers
-            .FirstOrDefaultAsync(u => u.UserName.ToLower() == model.Username.ToLower());
+    //     var user = await _dbContext.AspNetUsers
+    //         .FirstOrDefaultAsync(u => u.UserName.ToLower() == model.Username.ToLower());
 
-        if (user == null)
-            return null;
+    //     if (user == null)
+    //         return null;
 
-        var passwordHasher = new PasswordHasher();
-        var verificationResult = passwordHasher.VerifyHashedPassword(user.PasswordHash, model.Password);
+    //     var passwordHasher = new PasswordHasher();
+    //     var verificationResult = passwordHasher.VerifyHashedPassword(user.PasswordHash, model.Password);
 
-        if (verificationResult == PasswordVerificationResult.Success)
-        {
-            var token = GenerateJwtToken(user);
+    //     if (verificationResult == PasswordVerificationResult.Success)
+    //     {
+    //         var token = GenerateJwtToken(user);
 
-            return new LoginResponse
-            {
-                access_token = token,
-                token_type = "bearer",
-                expires_in = 1209599,
-                userName = user.UserName,
-                Issued = DateTime.UtcNow.ToString("R"),
-                Expires = DateTime.UtcNow.AddDays(14).ToString("R")
-            };
+    //         return new LoginResponse
+    //         {
+    //             access_token = token,
+    //             token_type = "bearer",
+    //             expires_in = 1209599,
+    //             userName = user.UserName,
+    //             Issued = DateTime.UtcNow.ToString("R"),
+    //             Expires = DateTime.UtcNow.AddDays(14).ToString("R")
+    //         };
 
-        }
+    //     }
 
-        return null;
-    }
+    //     return null;
+    // }
 
-    private string GenerateJwtToken(AspNetUser user)
-    {
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes(_config["JWT:Secret"]);
+    // private string GenerateJwtToken(AspNetUser user)
+    // {
+    //     var tokenHandler = new JwtSecurityTokenHandler();
+    //     var key = Encoding.ASCII.GetBytes(_config["JWT:Secret"]);
 
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(new[]
-            {
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.NameIdentifier, user.Id)
-            }),
-            Expires = DateTime.UtcNow.AddDays(14),
-            Issuer = _config["JWT:ValidIssuer"],     // 👈 ADD THIS
-            Audience = _config["JWT:ValidAudience"], // 👈 ADD THIS
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(key),
-                SecurityAlgorithms.HmacSha256Signature
-            )
-        };
+    //     var tokenDescriptor = new SecurityTokenDescriptor
+    //     {
+    //         Subject = new ClaimsIdentity(new[]
+    //         {
+    //             new Claim(ClaimTypes.Name, user.UserName),
+    //             new Claim(ClaimTypes.NameIdentifier, user.Id)
+    //         }),
+    //         Expires = DateTime.UtcNow.AddDays(14),
+    //         Issuer = _config["JWT:ValidIssuer"],     // 👈 ADD THIS
+    //         Audience = _config["JWT:ValidAudience"], // 👈 ADD THIS
+    //         SigningCredentials = new SigningCredentials(
+    //             new SymmetricSecurityKey(key),
+    //             SecurityAlgorithms.HmacSha256Signature
+    //         )
+    //     };
 
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        return tokenHandler.WriteToken(token);
-    }
+    //     var token = tokenHandler.CreateToken(tokenDescriptor);
+    //     return tokenHandler.WriteToken(token);
+    // }
 
     public async Task<User?> Register([FromBody] PasswordDTO model, string token, string username) //NOT USED
     {
@@ -127,7 +129,7 @@ public class AuthService
         var user = await _userManager.FindByNameAsync(decodedUsername);
         if (user == null)
         {
-            _logger.LogError("Error finding user.");
+            // _logger.LogError("Error finding user.");
             return null;
         }
         var decodedToken = Uri.UnescapeDataString(token);
@@ -138,14 +140,14 @@ public class AuthService
             var newResult = await _userManager.AddPasswordAsync(user, model.NewPassword);
             if (!newResult.Succeeded)
             {
-                _logger.LogError("Error registering user.");
+                // _logger.LogError("Error registering user.");
                 return null;
             }
             user.LastPasswordReset = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Utc);
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
             {
-                _logger.LogError("Error updating password reset date time on user.");
+                // _logger.LogError("Error updating password reset date time on user.");
                 return null;
             }
             var roles = await _userManager.GetRolesAsync(user);
@@ -153,7 +155,7 @@ public class AuthService
             //retUser.Roles = roles.ToArray();
             return retUser;
         }
-        _logger.LogError("Error confirming email token.");
+        // _logger.LogError("Error confirming email token.");
         return null;
     }
 

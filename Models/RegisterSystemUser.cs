@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
-// using NewVivaApi.Models.Exceptions;
+using NewVivaApi.Models;
 using NewVivaApi.Services;
 using NewVivaApi.Data; // your DbContext namespace
 using NewVivaApi.Authentication.Models;
@@ -30,19 +30,19 @@ namespace NewVivaApi.Models
         // Dependencies
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly AppDbContext _context;
-        // private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         // private readonly EmailService _emailService;
 
         public RegisterSystemUserModel(
             UserManager<ApplicationUser> userManager,
-            AppDbContext context
-            // IHttpContextAccessor httpContextAccessor,
+            AppDbContext context,
+            IHttpContextAccessor httpContextAccessor
             // EmailService emailService
             )
         {
             _userManager = userManager;
             _context = context;
-            // _httpContextAccessor = httpContextAccessor;
+            _httpContextAccessor = httpContextAccessor;
             // _emailService = emailService;
         }
 
@@ -51,7 +51,7 @@ namespace NewVivaApi.Models
         public async Task RegisterAsync(string creatorUserName = "")
         {
             await CreateAspNetUserAsync();
-            await CreateUserProfileAsync();
+            // await CreateUserProfileAsync();
             await CreateVivaRoleAsync();
             // await SendEmailNotificationAsync(creatorUserName);
         }
@@ -73,25 +73,25 @@ namespace NewVivaApi.Models
             _userId = user.Id;
         }
 
-        private async Task CreateUserProfileAsync()
-        {
-            var currentUser = _httpContextAccessor.HttpContext?.User?.Identity?.Name ?? "system";
+        // private async Task CreateUserProfileAsync()
+        // {
+        //     var currentUser = _httpContextAccessor.HttpContext?.User?.Identity?.Name ?? "system";
 
-            var up = new UserProfile
-            {
-                FirstName = FirstName,
-                LastName = LastName,
-                PhoneNumber = PhoneNumber,
-                UserName = UserName,
-                UserID = _userId!,
-                CreateDT = DateTime.UtcNow,
-                LastUpdateDT = DateTime.UtcNow,
-                LastUpdateUser = currentUser
-            };
+        //     var up = new UserProfile
+        //     {
+        //         FirstName = FirstName,
+        //         LastName = LastName,
+        //         PhoneNumber = PhoneNumber,
+        //         UserName = UserName,
+        //         UserId = _userId!,
+        //         CreateDt = DateTime.UtcNow,
+        //         LastUpdateDt = DateTime.UtcNow,
+        //         LastUpdateUser = currentUser
+        //     };
 
-            _context.UserProfiles.Add(up);
-            await _context.SaveChangesAsync();
-        }
+        //     _context.UserProfiles.Add(up);
+        //     await _context.SaveChangesAsync();
+        // }
 
         private async Task CreateVivaRoleAsync()
         {
@@ -101,9 +101,9 @@ namespace NewVivaApi.Models
             {
                 var au = new AdminUser
                 {
-                    UserID = _userId!,
-                    CreateDT = DateTime.UtcNow,
-                    LastUpdateDT = DateTime.UtcNow,
+                    UserId = _userId!,
+                    CreateDt = DateTime.UtcNow,
+                    LastUpdateDt = DateTime.UtcNow,
                     LastUpdateUser = currentUser
                 };
                 _context.AdminUsers.Add(au);
@@ -112,11 +112,11 @@ namespace NewVivaApi.Models
             {
                 var gcu = new GeneralContractorUser
                 {
-                    UserID = _userId!,
-                    GeneralContractorID = CompanyID,
-                    CanApproveTF = GcApproveTF,
-                    CreateDT = DateTime.UtcNow,
-                    LastUpdateDT = DateTime.UtcNow,
+                    UserId = _userId!,
+                    GeneralContractorId = CompanyID,
+                    CanApproveTf = GcApproveTF,
+                    CreateDt = DateTime.UtcNow,
+                    LastUpdateDt = DateTime.UtcNow,
                     LastUpdateUser = currentUser
                 };
                 _context.GeneralContractorUsers.Add(gcu);
@@ -125,10 +125,10 @@ namespace NewVivaApi.Models
             {
                 var scu = new SubcontractorUser
                 {
-                    UserID = _userId!,
-                    SubcontractorID = CompanyID,
-                    CreateDT = DateTime.UtcNow,
-                    LastUpdateDT = DateTime.UtcNow,
+                    UserId = _userId!,
+                    SubcontractorId = CompanyID,
+                    CreateDt = DateTime.UtcNow,
+                    LastUpdateDt = DateTime.UtcNow,
                     LastUpdateUser = currentUser
                 };
                 _context.SubcontractorUsers.Add(scu);

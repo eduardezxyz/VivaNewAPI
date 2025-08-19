@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using NewVivaApi.Models;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
 
 namespace NewVivaApi.Authentication.Models;
 
