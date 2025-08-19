@@ -106,26 +106,26 @@ namespace NewVivaApi.Controllers
                     GeneratedPassword = generatedPassword // Remove in production
                 });
             }
-            catch (UserCreationException uce)
-            {
-                Console.WriteLine($"User creation failed: {string.Join(", ", uce.IdentityResult.Errors.Select(e => e.Description))}");
+            // catch (UserCreationException uce)
+            // {
+            //     Console.WriteLine($"User creation failed: {string.Join(", ", uce.IdentityResult.Errors.Select(e => e.Description))}");
 
-                // Check for duplicate email error
-                foreach (var error in uce.IdentityResult.Errors)
-                {
-                    if (error.Code == "DuplicateEmail" || error.Description.Contains("already exists"))
-                    {
-                        return BadRequest(new { Type = "error", Message = "Email already exists" });
-                    }
-                }
+            //     // Check for duplicate email error
+            //     foreach (var error in uce.IdentityResult.Errors)
+            //     {
+            //         if (error.Code == "DuplicateEmail" || error.Description.Contains("already exists"))
+            //         {
+            //             return BadRequest(new { Type = "error", Message = "Email already exists" });
+            //         }
+            //     }
 
-                return BadRequest(new
-                {
-                    Type = "error",
-                    Message = "User registration failed",
-                    Errors = uce.IdentityResult.Errors.Select(e => e.Description)
-                });
-            }
+            //     return BadRequest(new
+            //     {
+            //         Type = "error",
+            //         Message = "User registration failed",
+            //         Errors = uce.IdentityResult.Errors.Select(e => e.Description)
+            //     });
+            // }
             catch (Exception ex)
             {
                 Console.WriteLine($"Registration error: {ex.Message}");

@@ -2,9 +2,10 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
-using NewVivaApi.Models.Exceptions;
+// using NewVivaApi.Models.Exceptions;
 using NewVivaApi.Services;
 using NewVivaApi.Data; // your DbContext namespace
+using NewVivaApi.Authentication.Models;
 
 namespace NewVivaApi.Models
 {
@@ -66,8 +67,8 @@ namespace NewVivaApi.Models
 
             var result = await _userManager.CreateAsync(user, Password);
 
-            if (!result.Succeeded)
-                throw new UserCreationException(UserName, result);
+            // if (!result.Succeeded)
+            //     throw new UserCreationException(UserName, result);
 
             _userId = user.Id;
         }
