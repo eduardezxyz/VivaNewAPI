@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using NewVivaApi.Authentication.Models;
+using NewVivaApi.Authentication;
 
 namespace NewVivaApi.Models;
 
@@ -13,5 +15,5 @@ public partial class AspNetUserExtension
 
     public DateTime? PasswordResetTokenExpiration { get; set; }
 
-    public virtual AspNetUser IdNavigation { get; set; } = null!;
+    public virtual ApplicationUser IdNavigation { get; set; } = null!;
 }

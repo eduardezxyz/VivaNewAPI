@@ -23,7 +23,7 @@ namespace NewVivaApi.Controllers
             _context = context;
         }
 
-        // [HttpGet("GetDomainInfo/{name}")]
+        [HttpGet("GetDomainInfo/{name}")]
         public async Task<IActionResult> GetDomainInfo(string name)
         {
             // TODO: Replace with your real identity check

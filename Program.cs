@@ -12,12 +12,31 @@ using Microsoft.AspNetCore.OData.Routing;
 using NewVivaApi.Services;
 using NewVivaApi.Authentication;
 using Microsoft.OpenApi.Models;
+using NewVivaApi.Authentication.Models;
+using NewVivaApi.Authentication;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register your AppDbContext with the DI container
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Connection string 'DefaultConnection' not found in appsettings.json");
+}
+
+// Register AppDbContext with the DI container
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString));
+
+// Add Identity DbContext (separate from business DbContext)
+builder.Services.AddDbContext<NewVivaApi.Authentication.Models.IdentityDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
+// Configure Identity to use the separate IdentityDbContext
+builder.Services.AddIdentity<ApplicationUser, Role>()
+    .AddEntityFrameworkStores<NewVivaApi.Authentication.Models.IdentityDbContext>()
+    .AddDefaultTokenProviders();
 
 // ----------------------
 // 1. Configure CORS
@@ -60,6 +79,7 @@ builder.Services.AddControllers()
 // ----------------------
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<NewVivaApi.Services.AspNetUserService>();
 
 // ----------------------
 // JWT Authentication
@@ -123,8 +143,11 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddAutoMapper(typeof(AutoMapperConfig));
+builder.Services.AddHttpContextAccessor();
+
 
 var app = builder.Build();
+NewVivaApi.Extensions.ServiceLocator.Current = app.Services;
 
 // ----------------------
 // Middleware Pipeline

@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using NewVivaApi.Models;
+using NewVivaApi.Authentication;
+using NewVivaApi.Authentication.Models; 
+//using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+//using NewVivaApi.Authentication.Models; // For ApplicationUser
 
 namespace NewVivaApi.Data;
 
@@ -18,15 +22,15 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<AdminUser> AdminUsers { get; set; }
 
-    public virtual DbSet<AspNetRole> AspNetRoles { get; set; }
+    //public virtual DbSet<AspNetRole> AspNetRoles { get; set; }
 
-    public virtual DbSet<AspNetUser> AspNetUsers { get; set; }
+    //public virtual DbSet<AspNetUser> AspNetUsers { get; set; }
 
-    public virtual DbSet<AspNetUserClaim> AspNetUserClaims { get; set; }
+    //public virtual DbSet<AspNetUserClaim> AspNetUserClaims { get; set; }
 
     public virtual DbSet<AspNetUserExtension> AspNetUserExtensions { get; set; }
 
-    public virtual DbSet<AspNetUserLogin> AspNetUserLogins { get; set; }
+    //public virtual DbSet<AspNetUserLogin> AspNetUserLogins { get; set; }
 
     public virtual DbSet<Document> Documents { get; set; }
 
@@ -84,6 +88,14 @@ public partial class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        //base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<ApplicationUser>(b =>
+        {
+            b.ToTable("AspNetUsers");     // <-- critical
+            b.HasKey(u => u.Id);
+            b.Property(u => u.Id).HasMaxLength(450);
+        });
+
         modelBuilder.Entity<AdminUser>(entity =>
         {
             entity.Property(e => e.AdminUserId).HasColumnName("AdminUserID");
@@ -95,12 +107,19 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(128)
                 .HasColumnName("UserID");
 
-            entity.HasOne(d => d.User).WithMany(p => p.AdminUsers)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_AdminUsers_AspNetUsers");
+            // entity.HasOne(d => d.User).WithMany(p => p.AdminUsers)
+            //     .HasForeignKey(d => d.UserId)
+            //     .OnDelete(DeleteBehavior.ClientSetNull)
+            //     .HasConstraintName("FK_AdminUsers_AspNetUsers");
+            
+            entity.HasOne(e => e.User)                 // ← use the navigation
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_AdminUsers_AspNetUsers");
         });
 
+/*
         modelBuilder.Entity<AspNetRole>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK_dbo.AspNetRoles");
@@ -157,19 +176,6 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("FK_dbo.AspNetUserClaims_dbo.AspNetUsers_UserId");
         });
 
-        modelBuilder.Entity<AspNetUserExtension>(entity =>
-        {
-            entity.ToTable(tb => tb.HasTrigger("AspNetUserExtensions_ClearExpired"));
-
-            entity.Property(e => e.Id).HasMaxLength(128);
-            entity.Property(e => e.PasswordResetTokenExpiration).HasColumnType("datetime");
-
-            entity.HasOne(d => d.IdNavigation).WithOne(p => p.AspNetUserExtension)
-                .HasForeignKey<AspNetUserExtension>(d => d.Id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_AspNetUserExtensions_AspNetUsers");
-        });
-
         modelBuilder.Entity<AspNetUserLogin>(entity =>
         {
             entity.HasKey(e => new { e.LoginProvider, e.ProviderKey, e.UserId }).HasName("PK_dbo.AspNetUserLogins");
@@ -184,6 +190,20 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK_dbo.AspNetUserLogins_dbo.AspNetUsers_UserId");
         });
+
+        modelBuilder.Entity<AspNetUserExtension>(entity =>
+        {
+            entity.ToTable(tb => tb.HasTrigger("AspNetUserExtensions_ClearExpired"));
+
+            entity.Property(e => e.Id).HasMaxLength(128);
+            entity.Property(e => e.PasswordResetTokenExpiration).HasColumnType("datetime");
+
+            entity.HasOne(d => d.IdNavigation).WithOne(p => p.AspNetUserExtension)
+                .HasForeignKey<AspNetUserExtension>(d => d.Id)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_AspNetUserExtensions_AspNetUsers");
+        });
+        */
 
         modelBuilder.Entity<Document>(entity =>
         {
@@ -277,16 +297,30 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("(getutcdate())")
                 .HasColumnName("LastUpdateDT");
             entity.Property(e => e.LastUpdateUser).HasMaxLength(250);
-            entity.Property(e => e.UserId)
-                .HasMaxLength(128)
-                .HasColumnName("UserID");
+            // entity.Property(e => e.UserId)
+            //     .HasMaxLength(128)
+            //     .HasColumnName("UserID");
 
-            entity.HasOne(d => d.GeneralContractor).WithMany(p => p.GeneralContractorUsers)
+            // entity.HasOne(d => d.GeneralContractor).WithMany(p => p.GeneralContractorUsers)
+            //     .HasForeignKey(d => d.GeneralContractorId)
+            //     .OnDelete(DeleteBehavior.ClientSetNull)
+            //     .HasConstraintName("FK_GeneralContractorUsers_GeneralContractors");
+
+            // entity.HasOne(d => d.User).WithMany(p => p.GeneralContractorUsers)
+            //     .HasForeignKey(d => d.UserId)
+            //     .OnDelete(DeleteBehavior.ClientSetNull)
+            //     .HasConstraintName("FK_GeneralContractorUsers_AspNetUsers");
+            entity.Property(e => e.UserId).HasMaxLength(450).HasColumnName("UserID");
+
+            entity.HasOne(d => d.GeneralContractor)
+                .WithMany(p => p.GeneralContractorUsers)
                 .HasForeignKey(d => d.GeneralContractorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_GeneralContractorUsers_GeneralContractors");
 
-            entity.HasOne(d => d.User).WithMany(p => p.GeneralContractorUsers)
+            // bind to the NAVIGATION, no HasPrincipalKey needed
+            entity.HasOne(d => d.User)
+                .WithMany()
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_GeneralContractorUsers_AspNetUsers");
@@ -568,15 +602,13 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.DeleteDt).HasColumnName("DeleteDT");
             entity.Property(e => e.LastUpdateDt).HasColumnName("LastUpdateDT");
             entity.Property(e => e.LastUpdateUser).HasMaxLength(250);
-            entity.Property(e => e.UserId)
-                .HasMaxLength(128)
-                .HasColumnName("UserID");
-            entity.Property(e => e.WebHookUrl)
-                .HasMaxLength(500)
-                .HasColumnName("WebHookURL");
+            entity.Property(e => e.WebHookUrl).HasMaxLength(500).HasColumnName("WebHookURL");
 
-            entity.HasOne(d => d.User).WithMany(p => p.ServiceUsers)
-                .HasForeignKey(d => d.UserId)
+            entity.Property(e => e.UserId).HasMaxLength(450).HasColumnName("UserID");
+
+            entity.HasOne(e => e.User)                 // ← use the navigation
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ServiceUsers_AspNetUsers");
         });
@@ -651,26 +683,32 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<SubcontractorUser>(entity =>
         {
             entity.Property(e => e.SubcontractorUserId).HasColumnName("SubcontractorUserID");
-            entity.Property(e => e.CreateDt)
-                .HasDefaultValueSql("(getutcdate())")
-                .HasColumnName("CreateDT");
+            entity.Property(e => e.CreateDt).HasDefaultValueSql("(getutcdate())").HasColumnName("CreateDT");
             entity.Property(e => e.DeleteDt).HasColumnName("DeleteDT");
-            entity.Property(e => e.LastUpdateDt)
-                .HasDefaultValueSql("(getutcdate())")
-                .HasColumnName("LastUpdateDT");
+            entity.Property(e => e.LastUpdateDt).HasDefaultValueSql("(getutcdate())").HasColumnName("LastUpdateDT");
             entity.Property(e => e.LastUpdateUser).HasMaxLength(250);
             entity.Property(e => e.SubcontractorId).HasColumnName("SubcontractorID");
-            entity.Property(e => e.UserId)
-                .HasMaxLength(128)
-                .HasColumnName("UserID");
+            entity.Property(e => e.UserId).HasMaxLength(128).HasColumnName("UserID");
 
-            entity.HasOne(d => d.Subcontractor).WithMany(p => p.SubcontractorUsers)
-                .HasForeignKey(d => d.SubcontractorId)
+            // entity.HasOne(d => d.Subcontractor).WithMany(p => p.SubcontractorUsers)
+            //     .HasForeignKey(d => d.SubcontractorId)
+            //     .OnDelete(DeleteBehavior.ClientSetNull)
+            //     .HasConstraintName("FK_SubcontractorUsers_Subcontractors");
+
+            // entity.HasOne(d => d.User).WithMany(p => p.SubcontractorUsers)
+            //     .HasForeignKey(d => d.UserId)
+            //     .OnDelete(DeleteBehavior.ClientSetNull)
+            //     .HasConstraintName("FK_SubcontractorUsers_AspNetUsers");
+            
+            entity.HasOne(e => e.Subcontractor)
+                .WithMany(p => p.SubcontractorUsers)
+                .HasForeignKey(e => e.SubcontractorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SubcontractorUsers_Subcontractors");
 
-            entity.HasOne(d => d.User).WithMany(p => p.SubcontractorUsers)
-                .HasForeignKey(d => d.UserId)
+            entity.HasOne(e => e.User)                 // ← use the navigation
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SubcontractorUsers_AspNetUsers");
         });
@@ -696,9 +734,7 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.UserId).HasName("PK_UserProfile");
 
-            entity.Property(e => e.UserId)
-                .HasMaxLength(128)
-                .HasColumnName("UserID");
+            entity.Property(e => e.UserId).HasMaxLength(128).HasColumnName("UserID");
             entity.Property(e => e.CreateDt).HasColumnName("CreateDT");
             entity.Property(e => e.DeleteDt).HasColumnName("DeleteDT");
             entity.Property(e => e.FirstName).HasMaxLength(250);
@@ -708,10 +744,14 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.PhoneNumber).HasMaxLength(100);
             entity.Property(e => e.UserName).HasMaxLength(256);
 
-            entity.HasOne(d => d.User).WithOne(p => p.UserProfile)
-                .HasForeignKey<UserProfile>(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_UserProfile_UserProfile");
+            // entity.HasOne(d => d.User).WithOne(p => p.UserProfile)
+            //     .HasForeignKey<UserProfile>(d => d.UserId)
+            //     .OnDelete(DeleteBehavior.ClientSetNull)
+            //     .HasConstraintName("FK_UserProfile_UserProfile");
+
+            entity.HasOne(p => p.User)
+                .WithOne(u => u.UserProfile)
+                .HasForeignKey<UserProfile>(p => p.UserId);
         });
 
         modelBuilder.Entity<UserProfilesVw>(entity =>
@@ -741,6 +781,13 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(18)
                 .IsUnicode(false);
         });
+
+        // add near the end of OnModelCreating, only for types that exist in your project
+        modelBuilder.Ignore<AspNetUser>();
+        modelBuilder.Ignore<AspNetRole>();
+        modelBuilder.Ignore<AspNetUserLogin>();
+        modelBuilder.Ignore<AspNetUserClaim>();
+        // modelBuilder.Ignore<AspNetRoleClaim>(); // if you have one
 
         OnModelCreatingPartial(modelBuilder);
     }

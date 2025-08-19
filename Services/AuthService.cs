@@ -10,49 +10,52 @@ using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using NewVivaApi.Services;
-using Microsoft.AspNet.Identity; // Old Identity v2
+//using Microsoft.AspNet.Identity; // Old Identity v2
 using Microsoft.EntityFrameworkCore;
 using NewVivaApi.Models;
-using NewVivaApi.Data; // Make sure this points to your AppDbContext namespace
+using NewVivaApi.Data;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore; // Make sure this points to your AppDbContext namespace
+using LegacyPasswordHasher = Microsoft.AspNet.Identity.PasswordHasher;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNet.Identity;
+
 
 namespace NewVivaApi.Services;
 public class AuthService
 {
     private readonly AppDbContext _dbContext;
     private readonly IConfiguration _config;
-
-    // private readonly UserManager<ApplicationUser> _userManager;
-    // private readonly IConfiguration _configuration;
-    // private readonly ILogger<AuthService> _logger;
+    private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
+    private readonly ILogger<AuthService> _logger;
     // private readonly IEmailService _service;
-    // private readonly IHttpContextAccessor _contextAccessor;
+    private readonly IHttpContextAccessor _contextAccessor;
     // private readonly TwilioService _smsService;
     // private readonly SignInManager<ApplicationUser> _signInManager;
-    // private readonly AspNetUserService _aspNetUserService;
+    private readonly Authentication.Models.IdentityDbContext _identityDbContext;
 
     public AuthService(
         AppDbContext context,
-        IConfiguration config
-        // UserManager<ApplicationUser> userManager,
-        // ILogger<AuthService> logger,
-        // IConfiguration configuration,
-        // IHttpContextAccessor contextAccessor,
+        IConfiguration config,
+        Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager,
+        ILogger<AuthService> logger,
+        IConfiguration configuration,
+        IHttpContextAccessor contextAccessor,
         // IEmailService service,
         // TwilioService smsService,
         // SignInManager<ApplicationUser> signInManager,
-        // AspNetUserService aspNetUserService
+        Authentication.Models.IdentityDbContext identityDbContext
         )
     {
-        // _userManager = userManager;
-        // _configuration = configuration;
-        // _contextAccessor = contextAccessor;
+        _userManager = userManager;
+        _config = config;
+        _contextAccessor = contextAccessor;
         // _service = service;
-        // _logger = logger;
+        _logger = logger;
         // _smsService = smsService;
         // _signInManager = signInManager;
-        // _aspNetUserService = aspNetUserService;
         _config = config;
         _dbContext = context;
+        _identityDbContext = identityDbContext;
     }
 
     public async Task<LoginResponse?> Login([FromBody] LoginModel model)
@@ -60,7 +63,7 @@ public class AuthService
         if (string.IsNullOrWhiteSpace(model.Username) || string.IsNullOrWhiteSpace(model.Password))
             return null;
 
-        var user = await _dbContext.AspNetUsers
+        var user = await _identityDbContext.Users
             .FirstOrDefaultAsync(u => u.UserName.ToLower() == model.Username.ToLower());
 
         if (user == null)
@@ -69,7 +72,7 @@ public class AuthService
         var passwordHasher = new PasswordHasher();
         var verificationResult = passwordHasher.VerifyHashedPassword(user.PasswordHash, model.Password);
 
-        if (verificationResult == PasswordVerificationResult.Success)
+        if (verificationResult == Microsoft.AspNet.Identity.PasswordVerificationResult.Success)
         {
             var token = GenerateJwtToken(user);
 
@@ -88,7 +91,7 @@ public class AuthService
         return null;
     }
 
-    private string GenerateJwtToken(AspNetUser user)
+    private string GenerateJwtToken(ApplicationUser user)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_config["JWT:Secret"]);
