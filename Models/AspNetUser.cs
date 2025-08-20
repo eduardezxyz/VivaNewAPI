@@ -29,21 +29,21 @@ public partial class AspNetUser
 
     public bool? ResetPasswordOnLoginTf { get; set; }
 
-    public virtual ICollection<AdminUser> AdminUsers { get; set; } = new List<AdminUser>();
+    // public virtual ICollection<AdminUser> AdminUsers { get; set; } = new List<AdminUser>();
 
-    public virtual ICollection<AspNetUserClaim> AspNetUserClaims { get; set; } = new List<AspNetUserClaim>();
+    // public virtual ICollection<AspNetUserClaim> AspNetUserClaims { get; set; } = new List<AspNetUserClaim>();
 
-    public virtual AspNetUserExtension? AspNetUserExtension { get; set; }
+    // public virtual AspNetUserExtension? AspNetUserExtension { get; set; }
 
-    public virtual ICollection<AspNetUserLogin> AspNetUserLogins { get; set; } = new List<AspNetUserLogin>();
+    // public virtual ICollection<AspNetUserLogin> AspNetUserLogins { get; set; } = new List<AspNetUserLogin>();
 
-    public virtual ICollection<GeneralContractorUser> GeneralContractorUsers { get; set; } = new List<GeneralContractorUser>();
+    // public virtual ICollection<GeneralContractorUser> GeneralContractorUsers { get; set; } = new List<GeneralContractorUser>();
 
-    public virtual ICollection<ServiceUser> ServiceUsers { get; set; } = new List<ServiceUser>();
+    // public virtual ICollection<ServiceUser> ServiceUsers { get; set; } = new List<ServiceUser>();
 
-    public virtual ICollection<SubcontractorUser> SubcontractorUsers { get; set; } = new List<SubcontractorUser>();
+    // public virtual ICollection<SubcontractorUser> SubcontractorUsers { get; set; } = new List<SubcontractorUser>();
 
-    public virtual UserProfile? UserProfile { get; set; }
+    // public virtual UserProfile? UserProfile { get; set; }
 
-    public virtual ICollection<AspNetRole> Roles { get; set; } = new List<AspNetRole>();
+    // public virtual ICollection<AspNetRole> Roles { get; set; } = new List<AspNetRole>();
 }

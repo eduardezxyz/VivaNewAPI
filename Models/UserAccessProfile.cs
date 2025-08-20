@@ -15,10 +15,10 @@ public class UserAccessProfile
     public bool CanApproveTF { get; set; } = false;
     public int? GeneralContractorID { get; set; }
     public int? SubcontractorID { get; set; }
-    public bool ResetPasswordOnLogin { get; set; } = false;
+    public bool? ResetPasswordOnLogin { get; set; } = false;
 
     public UserAccessProfile()
-        {
-            this.CanApproveTF = false;
-        }
+    {
+        this.CanApproveTF = false;
+    }
 }
