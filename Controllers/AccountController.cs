@@ -466,7 +466,7 @@ public class AccountController : ControllerBase
         var firstName = GetJsonProperty(data, "FirstName");
         var lastName = GetJsonProperty(data, "LastName");
         var email = GetJsonProperty(data, "UserName");
-        var phoneNumber = GetJsonProperty(data, "phoneNumber");
+        var phoneNumber = GetJsonProperty(data, "PhoneNumber");
         Console.WriteLine($"Extracted: {firstName} {lastName}, Email: {email}, Phone: {phoneNumber}");
 
         Console.WriteLine($"First name: {firstName}");
