@@ -18,7 +18,7 @@ using AutoMapper;
 
 namespace NewVivaApi.Controllers
 {
-    // [Authorize]
+    [Authorize]
     public class UserProfilesController : ODataController
     {
         private readonly AppDbContext _context;
