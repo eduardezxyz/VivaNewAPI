@@ -23,6 +23,35 @@ namespace NewVivaApi.Controllers
             _context = context;
         }
 
+        public async Task<IActionResult> Get(string name)
+        {
+            // TODO: Replace with your real identity check
+            // if (User?.Identity?.IsAuthenticated == true && User.Identity.Name == "ServiceUser")
+            // {
+            //     return BadRequest();
+            // }
+
+            var generalContractor = await _context.GeneralContractors
+                .FirstOrDefaultAsync(f => f.DommainName == name);
+
+            if (generalContractor == null)
+            {
+                return Ok(); // Returns 200 with empty body
+            }
+
+            var jsonAttributes = JObject.Parse(generalContractor.JsonAttributes);
+
+            var brandingModel = new brandingModel
+            {
+                GCName = generalContractor.GeneralContractorName,
+                LogoImage = generalContractor.LogoImage,
+                PrimaryColor = jsonAttributes["PrimaryColor"]?.ToString(),
+                NavColor = jsonAttributes["NavColor"]?.ToString()
+            };
+
+            return Ok(brandingModel);
+        }
+
         [HttpGet("GetDomainInfo/{name}")]
         public async Task<IActionResult> GetDomainInfo(string name)
         {
