@@ -463,11 +463,15 @@ public class AccountController : ControllerBase
     private RegisterDataModel ExtractRegisterData(JsonElement data)
     {
         Console.WriteLine("Extracting register data from JSON...");
-        var firstName = GetJsonProperty(data, "firstName");
-        var lastName = GetJsonProperty(data, "lastName");
-        var email = GetJsonProperty(data, "email");
+        var firstName = GetJsonProperty(data, "FirstName");
+        var lastName = GetJsonProperty(data, "LastName");
+        var email = GetJsonProperty(data, "UserName");
         var phoneNumber = GetJsonProperty(data, "phoneNumber");
         Console.WriteLine($"Extracted: {firstName} {lastName}, Email: {email}, Phone: {phoneNumber}");
+
+        Console.WriteLine($"First name: {firstName}");
+        Console.WriteLine($"Last name: {lastName}");
+        Console.WriteLine($"Email: {email}");
 
         int companyId = 0;
         if (data.TryGetProperty("companyID", out var companyIdElement))
@@ -558,13 +562,20 @@ public class AccountController : ControllerBase
         var errors = new List<string>();
 
         if (string.IsNullOrWhiteSpace(data.FirstName))
+        {
             errors.Add("First name is required");
+        }
 
         if (string.IsNullOrWhiteSpace(data.LastName))
+        {
             errors.Add("Last name is required");
+        }
 
         if (string.IsNullOrWhiteSpace(data.Email))
+        {
             errors.Add("Email is required");
+        }
+
         else if (!IsValidEmail(data.Email))
             errors.Add("Invalid email format");
 
