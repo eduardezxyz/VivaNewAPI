@@ -25,26 +25,6 @@ if (string.IsNullOrEmpty(connectionString))
     throw new InvalidOperationException("Connection string 'DefaultConnection' not found in appsettings.json");
 }
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(connectionString));
-
-
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrEmpty(connectionString))
-{
-    throw new InvalidOperationException("Connection string 'DefaultConnection' not found in appsettings.json");
-}
-
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(connectionString));
-
-
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrEmpty(connectionString))
-{
-    throw new InvalidOperationException("Connection string 'DefaultConnection' not found in appsettings.json");
-}
-
 // Register AppDbContext with the DI container
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
@@ -205,18 +185,6 @@ static IEdmModel GetEdmModel()
     builder.EntitySet<PayAppHistoryVw>("PayAppHistory").EntityType.HasKey(h => h.PayAppHistoryId);
     builder.EntitySet<UserProfilesVw>("UserProfiles").EntityType.HasKey(up => up.UserId);
     builder.EntitySet<DocumentsVw>("Documents").EntityType.HasKey(d => d.DocumentId);
-
-    builder.EntitySet<UserProfilesVw>("UserProfiles")
-        .EntityType.HasKey(up => up.UserId);
-
-    builder.EntitySet<PayAppPaymentsVw>("PayAppPayments")
-        .EntityType.HasKey(p => p.PaymentId);
-
-    builder.EntitySet<UserProfilesVw>("UserProfiles")
-        .EntityType.HasKey(up => up.UserId);
-
-    builder.EntitySet<PayAppPaymentsVw>("PayAppPayments")
-        .EntityType.HasKey(p => p.PaymentId);
 
     return builder.GetEdmModel();
 }

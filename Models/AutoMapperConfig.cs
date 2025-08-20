@@ -17,11 +17,6 @@ public class AutoMapperConfig : Profile
         CreateMap<SubcontractorProjectsVw, SubcontractorProject>().ReverseMap();
         CreateMap<UserProfilesVw, UserProfile>().ReverseMap();
         CreateMap<DocumentsVw, Document>().ReverseMap();
-        CreateMap<PayAppPaymentsVw, PayAppPayment>()
-            .ForMember(dest => dest.PaymentId, opt => opt.Ignore())
-            .ForMember(dest => dest.CreateDt, opt => opt.Ignore())
-            .ForMember(dest => dest.CreatedByUser, opt => opt.Ignore())
-            .ReverseMap();
     }
 }
 

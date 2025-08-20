@@ -138,7 +138,6 @@ namespace NewVivaApi.Services
                                  pap.DeleteDt == null)
                     .ToListAsync();
                 Console.WriteLine($"Found {jointChecks.Count} joint checks for PayApp ID {_payAppId}");
-                Console.WriteLine($"Initial total dollar amount: {totalPADollarAmount}");
                 foreach (var jointCheck in jointChecks)
                 {
                     totalPADollarAmount -= jointCheck.DollarAmount;
