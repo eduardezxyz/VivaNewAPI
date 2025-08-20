@@ -64,7 +64,7 @@ namespace NewVivaApi.Controllers
                 GeneralContractorID = (int?)null,
                 ResetPasswordOnLogin = false,
                 SubcontractorID = (int?)null,
-                UserId = "eb1d35d7-75a8-4176-996d-7580ddf75f8c",
+                UserId = "eb1d35d7-75a8-4176-996d-7580ddf75f8c", //userId,
                 UserName = "thomas.perez@integrait.io",
                 UserType = 0
             };
