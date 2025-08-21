@@ -15,6 +15,7 @@ using NewVivaApi.Data;
 using NewVivaApi.Models;
 using System.Text.Json;
 using AutoMapper;
+using NewVivaApi.Services;
 
 namespace NewVivaApi.Controllers.Odata
 {
@@ -24,14 +25,18 @@ namespace NewVivaApi.Controllers.Odata
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         //private readonly UserRegistrationService _registrationService;
+        private readonly EmailService _emailService;
 
         public GeneralContractorsController(
             AppDbContext context,
-            IMapper mapper
+            IMapper mapper,
+            EmailService emailService
             ) //UserRegistrationService registrationService
+
         {
             _context = context;
             _mapper = mapper;
+            _emailService = emailService;
             //_registrationService = registrationService;
         }
 
