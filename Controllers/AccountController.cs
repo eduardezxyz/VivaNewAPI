@@ -473,16 +473,25 @@ public class AccountController : ControllerBase
         Console.WriteLine($"Last name: {lastName}");
         Console.WriteLine($"Email: {email}");
 
+        Console.WriteLine($"Raw JSON data: {data}");
+        Console.WriteLine("Available properties:");
+        foreach (var property in data.EnumerateObject())
+        {
+            Console.WriteLine($"  Property: '{property.Name}' = {property.Value} (Type: {property.Value.ValueKind})");
+        }
+
         int companyId = 0;
-        if (data.TryGetProperty("companyID", out var companyIdElement))
+        if (data.TryGetProperty("CompanyID", out var companyIdElement))
         {
             if (companyIdElement.ValueKind == JsonValueKind.Number)
             {
                 companyId = companyIdElement.GetInt32();
+                Console.WriteLine($"companyId: {companyId}");
             }
             else if (companyIdElement.ValueKind == JsonValueKind.String)
             {
                 int.TryParse(companyIdElement.GetString(), out companyId);
+                Console.WriteLine($"(string) companyId: {companyId}");
             }
         }
         // Handle boolean properties properly

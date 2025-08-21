@@ -23,6 +23,8 @@ namespace NewVivaApi.Controllers
             _context = context;
         }
 
+
+        // UNCOMMENT THIS WHEN TESTING FRONT END
         public async Task<IActionResult> Get(string name)
         {
             // TODO: Replace with your real identity check
