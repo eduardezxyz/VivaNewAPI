@@ -15,6 +15,12 @@ using NewVivaApi.Data;
 using NewVivaApi.Models;
 using System.Text.Json;
 using AutoMapper;
+using NewVivaApi.Authentication;
+using NewVivaApi.Extensions;
+using Newtonsoft.Json.Linq;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNet.Identity;
 using NewVivaApi.Services;
 
 namespace NewVivaApi.Controllers.Odata
@@ -24,20 +30,26 @@ namespace NewVivaApi.Controllers.Odata
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
-        //private readonly UserRegistrationService _registrationService;
+        private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+
         private readonly EmailService _emailService;
 
         public GeneralContractorsController(
             AppDbContext context,
             IMapper mapper,
-            EmailService emailService
-            ) //UserRegistrationService registrationService
+            EmailService emailService,
+            IHttpContextAccessor httpContextAccessor,
+            Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager
+            )
 
         {
             _context = context;
             _mapper = mapper;
             _emailService = emailService;
-            //_registrationService = registrationService;
+            _userManager = userManager;
+            _httpContextAccessor = httpContextAccessor;
+
         }
 
         // [EnableQuery]
@@ -116,12 +128,13 @@ namespace NewVivaApi.Controllers.Odata
 
             //subdomain service
             //var subdomainService = new SubdomainService();
-            //await subdomainService.AddNewSubdomainAsync(model.DomainName);
+            //await subdomainService.AddNewSubdomainAsync(model.DomainName); Line was commented / not active in original code
 
-            // var emailSvc = new EmailService();
-            // emailSvc.SendAdminEmailNewGeneralContractor(User.Identity.GetUserId(), model.GeneralContractorId);
+            //EmailService es = new EmailService();
+            //es.sendAdminEmailNewGeneralContractor(User.Identity.GetUserId(), model.GeneralContractorID);
 
-            //await _registrationService.RegisterNewGeneralContractorAsync(model);
+            //Register new user
+            await RegisterNewGeneralContractor(model);
 
             return Created(model);
         }
@@ -195,5 +208,79 @@ namespace NewVivaApi.Controllers.Odata
             return NoContent();
         }
 
+
+        private async Task RegisterNewGeneralContractor(GeneralContractorsVw model)
+        {
+            if (User.Identity.IsServiceUser())
+            {
+                return;
+            }
+
+            JObject jsonAttributes = JObject.Parse(model.JsonAttributes);
+            string userName = jsonAttributes["ContactEmail"].ToString();
+
+            ApplicationUser existingUser = await _userManager.FindByEmailAsync(userName);
+            if (existingUser != null && existingUser.Id != null)
+            {
+                //User Already exists, don't create them.
+                return;
+            }
+
+            string contactName = jsonAttributes["ContactName"].ToString();
+            string[] names = contactName.Split(' ');
+
+            string firstName = "First Name";
+            string lastName = "Last Name";
+
+            if (names.Length < 2)
+            {
+                firstName = contactName;
+            }
+            else
+            {
+                firstName = names[0];
+                lastName = names[1];
+            }
+
+            // Generate password
+            var requirements = new PasswordRequirements
+            {
+                RequireNumber = true,
+                RequireSymbol = true,
+                RequireLowercase = true,
+                RequireUppercase = true,
+                MinimumLength = 10,
+                MaximumLength = 16
+            };
+
+            string generatedPassword = PasswordGenerationService.GeneratePassword(requirements);
+            Console.WriteLine($"Generated password for user: {userName}");
+
+            RegisterSystemUserModel newGeneralContractorUser = new RegisterSystemUserModel(_context, _userManager, _httpContextAccessor)
+            {
+                UserName = userName,
+                FirstName = firstName,
+                LastName = lastName,
+                //PhoneNumber = phoneNumber,
+                Password = generatedPassword,
+                ConfirmPassword = generatedPassword,
+                CompanyID = model.GeneralContractorId,
+                isAdminTF = false,
+                isGCTF = true,
+                isSCTF = false,
+                gcApproveTF = true
+            };
+
+            // Register the user
+            var creatorUserName = User?.Identity?.Name ?? string.Empty;
+            Console.WriteLine($"Registering user: {userName} by {creatorUserName}");
+
+            await newGeneralContractorUser.RegisterAsync(creatorUserName);
+            Console.WriteLine("User registration completed.");
+
+            return;
+
+        }
     }
 }
+
