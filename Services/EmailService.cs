@@ -4,20 +4,22 @@ using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Hosting;
-using NewVivaApi.Models;  
+using NewVivaApi.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Globalization;
 using NewVivaApi.Data;
+using Microsoft.Data.SqlClient;
+using System.Data;
 
-namespace NewVivaApi.Services 
+namespace NewVivaApi.Services
 {
     public class EmailService
     {
-        private readonly AppDbContext _context; 
+        private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _environment;
-        
+
         private string urlbase => _configuration["AWS:BaseURL"];
         private string emailSystemCD => _configuration["AWS:EmailConfigCD"];
         private string domainUrlBase => _configuration["AWS:NewBaseUrl"];
@@ -32,7 +34,7 @@ namespace NewVivaApi.Services
 
         public string generateEmails(string TemplateName, Dictionary<string, string> keyPairs, string Invitees, string subject, string userName, Document attachment = null)
         {
-            string templatePath = Path.Combine(_environment.WebRootPath, "Templates", TemplateName + ".html");
+            string templatePath = Path.Combine(_environment.ContentRootPath, "Templates", TemplateName + ".html");
             string templateHtml = File.ReadAllText(templatePath);
 
             keyPairs.Add("{{siteLink}}", urlbase);
@@ -47,8 +49,7 @@ namespace NewVivaApi.Services
             ep.SystemCD = emailSystemCD;
             ep.isUnitTestTF = false;
 
-            EmailService es = new EmailService(_context, _configuration, _environment);
-            ep = es.createEmail(ep, attachment);
+            ep = createEmail(ep, attachment);
 
             if (ep.sentSuccessfulTF == false)
             {
@@ -60,70 +61,182 @@ namespace NewVivaApi.Services
 
         public EmailParameters createEmail(EmailParameters ep, Document attachment = null)
         {
+            Console.WriteLine("=== createEmail method started ===");
+            Console.WriteLine($"Email parameters: Recipients={ep.emails}, Subject={ep.subject}, CreatedBy={ep.createdByUser}, SystemCD={ep.SystemCD}");
+
             //Check Params to be valid
             if (ep.templateHTML == null || ep.parmList.Count < 1 || ep.emails == null || ep.subject == null || ep.fromEmail == null || ep.createdByUser == null)
             {
+                Console.WriteLine("Email validation FAILED - missing required parameters");
+                Console.WriteLine($"Validation details: templateHTML={ep.templateHTML != null}, parmListCount={ep.parmList?.Count ?? 0}, emails={ep.emails}, subject={ep.subject}, fromEmail={ep.fromEmail}, createdByUser={ep.createdByUser}");
+
                 ep.sentSuccessfulTF = false;
                 ep.resultMessage = "One or more of the email parameters is empty or null.";
                 return ep;
             }
 
+            Console.WriteLine("Email validation PASSED");
+
             ep.emailBodyHTML = ep.templateHTML;
+            Console.WriteLine($"Starting template parameter replacement with {ep.parmList.Count} parameters");
 
             foreach (KeyValuePair<string, string> p in ep.parmList)
             {
+                Console.WriteLine($"Replacing parameter {p.Key} with value: {p.Value}");
                 ep.emailBodyHTML = ep.emailBodyHTML.Replace(p.Key, p.Value);
             }
 
+            Console.WriteLine("Template parameter replacement completed");
+
             if (ep.isUnitTestTF)
             {
+                Console.WriteLine("Unit test mode - skipping actual email insertion");
                 ep.sentSuccessfulTF = true;
                 ep.resultMessage = "Email sent successfully.";
                 return ep;
             }
 
             int? refEmailMessageID = null;
-            
-            // NOTE: You'll need to replace this with your .NET Core data access method
-            // The old TableAdapter pattern doesn't exist in .NET Core
-            // You might need to create a stored procedure call or use Entity Framework
-            
-            // Example using Entity Framework (adjust based on your actual implementation):
+            Console.WriteLine("Starting database operations for email insertion");
+
             try
             {
-                // Replace this with your actual email logging implementation
-                // This is just a placeholder showing the concept
-                /*
-                var emailMessage = new EmailMessage
+                var connectionString = _configuration.GetConnectionString("UtilityConnectionString");
+                Console.WriteLine($"Using connection string from configuration: UtilityConnectionString");
+
+                if (string.IsNullOrEmpty(connectionString))
                 {
-                    Recipients = ep.emails,
-                    Subject = ep.subject,
-                    CreatedBy = ep.createdByUser,
-                    FromEmail = ep.fromEmail,
-                    EmailBody = ep.emailBodyHTML,
-                    SystemCD = ep.SystemCD,
-                    CCAddress = ep.CCAddress,
-                    BCCAddress = ep.BCCAddress,
-                    CreatedDate = DateTime.UtcNow
-                };
-                
-                if (attachment != null)
-                {
-                    emailMessage.AttachmentFileName = attachment.DownloadFileName;
-                    emailMessage.AttachmentPath = attachment.Path + attachment.FileName;
-                    emailMessage.AttachmentBucket = attachment.Bucket;
+                    Console.WriteLine("ERROR: UtilityConnectionString is null or empty in configuration");
+                    throw new InvalidOperationException("UtilityConnectionString not found in configuration");
                 }
-                
-                _context.EmailMessages.Add(emailMessage);
-                _context.SaveChanges();
-                refEmailMessageID = emailMessage.Id;
-                */
-                
-                // Temporary placeholder - you'll need to implement your email storage logic
-                refEmailMessageID = 1; // Replace with actual implementation
+
+                Console.WriteLine("Opening database connection...");
+                using var connection = new SqlConnection(connectionString);
+                connection.Open();
+                Console.WriteLine("Database connection opened successfully");
+
+                if (attachment == null)
+                {
+                    Console.WriteLine("Processing email WITHOUT attachment using UE_EmailMessage_I stored procedure");
+
+                    // Call UE_EmailMessage_I stored procedure
+                    using var command = new SqlCommand("dbo.UE_EmailMessage_I", connection)
+                    {
+                        CommandType = CommandType.StoredProcedure
+                    };
+
+                    Console.WriteLine("Creating stored procedure parameters...");
+
+                    var emailIdParam = new SqlParameter("@EmailMessageID", SqlDbType.Int)
+                    {
+                        Direction = ParameterDirection.InputOutput,
+                        Value = DBNull.Value
+                    };
+                    command.Parameters.Add(emailIdParam);
+
+                    command.Parameters.AddWithValue("@ToAddress", ep.emails ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@MsgSubject", ep.subject ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@CreatedUser", ep.createdByUser ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@FromAddress", ep.fromEmail ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@FromDisplayName", ep.createdByUser ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@BodyHTML", ep.emailBodyHTML ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@BodyURL", DBNull.Value);
+                    command.Parameters.AddWithValue("@SystemCD", ep.SystemCD ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@CCAddress", ep.CCAddress ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@BCCAddress", ep.BCCAddress ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@ImportanceID", 1);
+                    command.Parameters.AddWithValue("@EmbedBodyURLImagesTF", false);
+                    command.Parameters.AddWithValue("@TestModeTF", false);
+                    command.Parameters.AddWithValue("@BatchPriority", 50);
+                    command.Parameters.AddWithValue("@SentDT", DBNull.Value);
+                    command.Parameters.AddWithValue("@ReplyTo", DBNull.Value);
+
+                    Console.WriteLine("🚀 Executing UE_EmailMessage_I stored procedure...");
+                    var rowsAffected = command.ExecuteNonQuery();
+                    Console.WriteLine($"Stored procedure executed, rows affected: {rowsAffected}");
+
+                    refEmailMessageID = emailIdParam.Value as int?;
+                    Console.WriteLine($"Email inserted successfully with ID: {refEmailMessageID}");
+                }
+                else
+                {
+                    Console.WriteLine("Processing email WITH attachment using UE_EmailMessageWithAttachment_I stored procedure");
+                    Console.WriteLine($"Attachment details: FileName={attachment.DownloadFileName}, Path={attachment.Path}, Bucket={attachment.Bucket}");
+
+                    // Call UE_EmailMessageWithAttachment_I stored procedure
+                    using var command = new SqlCommand("dbo.UE_EmailMessageWithAttachment_I", connection)
+                    {
+                        CommandType = CommandType.StoredProcedure
+                    };
+
+                    Console.WriteLine("Creating stored procedure parameters for attachment email...");
+
+                    var emailIdParam = new SqlParameter("@EmailMessageID", SqlDbType.Int)
+                    {
+                        Direction = ParameterDirection.InputOutput,
+                        Value = DBNull.Value
+                    };
+                    command.Parameters.Add(emailIdParam);
+
+                    // Basic email parameters
+                    command.Parameters.AddWithValue("@ToAddress", ep.emails ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@MsgSubject", ep.subject ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@CreatedUser", ep.createdByUser ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@FromAddress", ep.fromEmail ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@FromDisplayName", ep.createdByUser ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@BodyHTML", ep.emailBodyHTML ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@BodyURL", DBNull.Value);
+                    command.Parameters.AddWithValue("@SystemCD", ep.SystemCD ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@CCAddress", ep.CCAddress ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@BCCAddress", ep.BCCAddress ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@ImportanceID", 1);
+                    command.Parameters.AddWithValue("@EmbedBodyURLImagesTF", false);
+                    command.Parameters.AddWithValue("@TestModeTF", false);
+
+                    // Attachment parameters
+                    command.Parameters.AddWithValue("@AttachmentFileName", attachment.DownloadFileName ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@AttachmentURL", DBNull.Value);
+                    command.Parameters.AddWithValue("@AttachmentFilePath", (attachment.Path + attachment.FileName) ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@BatchPriority", 50);
+                    command.Parameters.AddWithValue("@s3_FileName", attachment.FileName ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@s3_TF", true);
+                    command.Parameters.AddWithValue("@s3_Bucket", attachment.Bucket ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@HtmlToPDF_TF", false);
+                    command.Parameters.AddWithValue("@HtmlToPDF_WaitForCallback", false);
+                    command.Parameters.AddWithValue("@HtmlToPDF_MinLoadWait_ms", 0);
+                    command.Parameters.AddWithValue("@HtmlToPDF_PostData", DBNull.Value);
+                    command.Parameters.AddWithValue("@ReplyTo", DBNull.Value);
+
+                    Console.WriteLine("🚀 Executing UE_EmailMessageWithAttachment_I stored procedure...");
+                    var result = command.ExecuteScalar();
+                    Console.WriteLine($"Stored procedure executed, result: {result}");
+
+                    refEmailMessageID = emailIdParam.Value as int?;
+                    Console.WriteLine($"Email with attachment inserted successfully with ID: {refEmailMessageID}");
+                }
+
+                Console.WriteLine("🔌 Closing database connection");
+            }
+            catch (SqlException sqlEx)
+            {
+                Console.WriteLine($"SQL ERROR occurred while inserting email");
+                Console.WriteLine($"   Error Number: {sqlEx.Number}");
+                Console.WriteLine($"   Severity: {sqlEx.Class}");
+                Console.WriteLine($"   State: {sqlEx.State}");
+                Console.WriteLine($"   Message: {sqlEx.Message}");
+                Console.WriteLine($"   Stack Trace: {sqlEx.StackTrace}");
+
+                ep.sentSuccessfulTF = false;
+                ep.resultMessage = $"Database error saving email: {sqlEx.Message}";
+                return ep;
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"UNEXPECTED ERROR occurred while saving email");
+                Console.WriteLine($"   Exception Type: {ex.GetType().Name}");
+                Console.WriteLine($"   Message: {ex.Message}");
+                Console.WriteLine($"   Stack Trace: {ex.StackTrace}");
+
                 ep.sentSuccessfulTF = false;
                 ep.resultMessage = $"Error saving email: {ex.Message}";
                 return ep;
@@ -131,14 +244,18 @@ namespace NewVivaApi.Services
 
             if (refEmailMessageID == null || refEmailMessageID < 1)
             {
+                Console.WriteLine($"Email insertion FAILED - EmailMessageID is null or invalid: {refEmailMessageID}");
                 ep.sentSuccessfulTF = false;
-                ep.resultMessage = "Something went wrong when inserting email into database.";
+                ep.resultMessage = "Something went wrong when inserting email into UE_EmailMessage table.";
                 return ep;
             }
 
+            Console.WriteLine($"Email successfully queued for sending with ID: {refEmailMessageID}");
             ep.emailMessageID = refEmailMessageID;
             ep.sentSuccessfulTF = true;
             ep.resultMessage = "Email sent successfully.";
+
+            Console.WriteLine("=== createEmail method completed successfully ===");
             return ep;
         }
 
@@ -192,7 +309,7 @@ namespace NewVivaApi.Services
             keyPairs.Add("{{ContactName}}", userProfileRecord.FirstName);
             keyPairs.Add("{{SubcontractorName}}", subcontractorRecord.SubcontractorName);
             keyPairs.Add("{{Password}}", TmpPassword);
-                        
+
             generateEmails(templateHTML, keyPairs, userProfileRecord.UserName, "New Subcontractor User Added", userProfileRecord.UserName);
 
             return "";
@@ -247,7 +364,7 @@ namespace NewVivaApi.Services
             string templateHTML = "PasswordChangeNotification";
 
             Dictionary<string, string> keyPairs = new Dictionary<string, string>();
-            keyPairs.Add("{{Name}}", Name);            
+            keyPairs.Add("{{Name}}", Name);
 
             generateEmails(templateHTML, keyPairs, Email, "Password changed", Email);
         }
@@ -260,7 +377,7 @@ namespace NewVivaApi.Services
             string emailList = listOfGCUsersToNotify(GeneralContractorID);
 
             string templateHTML = "GCPayAppsToApprove";
-            Dictionary<string, string> keyPairs = new Dictionary<string, string>(); 
+            Dictionary<string, string> keyPairs = new Dictionary<string, string>();
 
             if (generalContractorRecord.GeneralContractorName != null)
             {
@@ -297,7 +414,7 @@ namespace NewVivaApi.Services
             keyPairs.Add("{{GeneralContractorName}}", generalContractorRecord.GeneralContractorName);
             keyPairs.Add("{{SubcontractorName}}", userProfileRecord.CompanyName);
             keyPairs.Add("{{ProjectName}}", projectIDRecord.ProjectName);
-            keyPairs.Add("{{PayAppID}}", payAppID.VivaPayAppId);    
+            keyPairs.Add("{{PayAppID}}", payAppID.VivaPayAppId);
 
             generateEmails(templateHTML, keyPairs, emailList, "New PayApp to Approve", userProfileRecord.UserName);
         }
@@ -319,17 +436,71 @@ namespace NewVivaApi.Services
 
         public void sendAdminEmailNewGeneralContractor(string UserID, int GeneralContractorID)
         {
+            Console.WriteLine($"=== STARTING sendAdminEmailNewGeneralContractor ===");
+            Console.WriteLine($"Input Parameters - UserID: {UserID}, GeneralContractorID: {GeneralContractorID}");
+
+            // Debug user lookup
+            Console.WriteLine($"Looking up user profile for UserID: {UserID}");
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
+
+            if (userProfileRecord == null)
+            {
+                Console.WriteLine($"ERROR: User profile not found for UserID: {UserID}");
+                return;
+            }
+            else
+            {
+                Console.WriteLine($"Found user: {userProfileRecord.UserName} - {userProfileRecord.FirstName} {userProfileRecord.LastName}");
+            }
+
+            // Debug GC lookup
+            Console.WriteLine($"Looking up General Contractor for ID: {GeneralContractorID}");
             GeneralContractorsVw generalContractorsRecord = _context.GeneralContractorsVws.FirstOrDefault(gc => gc.GeneralContractorId == GeneralContractorID);
+
+            if (generalContractorsRecord == null)
+            {
+                Console.WriteLine($"ERROR: General Contractor not found for ID: {GeneralContractorID}");
+                return;
+            }
+            else
+            {
+                Console.WriteLine($"Found GC: {generalContractorsRecord.GeneralContractorName}");
+            }
+
+            // Debug admin list
+            Console.WriteLine($"Getting admin email list...");
             string emailList = listOfAdminsToNotify();
+            Console.WriteLine($"Admin email list: {emailList}");
+
+            if (string.IsNullOrEmpty(emailList))
+            {
+                Console.WriteLine($"WARNING: No admin emails found!");
+                return;
+            }
 
             string templateHTML = "AdminNewGC";
+            Console.WriteLine($"Using email template: {templateHTML}");
+
             Dictionary<string, string> keyPairs = new Dictionary<string, string>();
-
             keyPairs.Add("{{GeneralContractorName}}", generalContractorsRecord.GeneralContractorName);
-            keyPairs.Add("{{UserName}}", userProfileRecord.UserName);      
+            keyPairs.Add("{{UserName}}", userProfileRecord.UserName);
 
-            generateEmails(templateHTML, keyPairs, emailList, "New General Contractor Added", userProfileRecord.UserName);
+            Console.WriteLine($"Email placeholders:");
+            foreach (var kvp in keyPairs)
+            {
+                Console.WriteLine($"  {kvp.Key} = {kvp.Value}");
+            }
+
+            Console.WriteLine($"Calling generateEmails...");
+            Console.WriteLine($"  Template: {templateHTML}");
+            Console.WriteLine($"  Recipients: {emailList}");
+            Console.WriteLine($"  Subject: New General Contractor Added");
+            Console.WriteLine($"  From User: {userProfileRecord.UserName}");
+
+            string result = generateEmails(templateHTML, keyPairs, emailList, "New General Contractor Added", userProfileRecord.UserName);
+
+            Console.WriteLine($"generateEmails result: {result}");
+            Console.WriteLine($"=== COMPLETED sendAdminEmailNewGeneralContractor ===");
         }
 
         public void sendAdminEmailNewSubcontractorUser(string UserID, int SubcontractorID, string creatorUserName)
@@ -344,7 +515,7 @@ namespace NewVivaApi.Services
             JObject jsonAttributes = JObject.Parse(subcontractorRecord.JsonAttributes);
             keyPairs.Add("{{ContactName}}", userProfileRecord.UserName);
             keyPairs.Add("{{SubcontractorName}}", subcontractorRecord.SubcontractorName);
-            keyPairs.Add("{{UserName}}", creatorUserName);      
+            keyPairs.Add("{{UserName}}", creatorUserName);
 
             generateEmails(templateHTML, keyPairs, emailList, "New Subcontractor User", userProfileRecord.UserName);
         }
@@ -362,7 +533,7 @@ namespace NewVivaApi.Services
             JObject jsonAttributes = JObject.Parse(generalContractorsRecord.JsonAttributes);
             keyPairs.Add("{{ContactName}}", userProfileRecord.UserName);
             keyPairs.Add("{{GeneralContractorName}}", generalContractorsRecord.GeneralContractorName);
-            keyPairs.Add("{{UserName}}", creatorUserName);     
+            keyPairs.Add("{{UserName}}", creatorUserName);
 
             generateEmails(templateHTML, keyPairs, emailList, "New General Contractor User", userProfileRecord.UserName);
         }
@@ -374,7 +545,7 @@ namespace NewVivaApi.Services
 
             string templateHTML = "AdminNewAdmin";
             Dictionary<string, string> keyPairs = new Dictionary<string, string>();
-            
+
             keyPairs.Add("{{UserName}}", userProfileRecord.UserName);
 
             generateEmails(templateHTML, keyPairs, emailList, "New Admin User", userProfileRecord.UserName);
@@ -408,7 +579,7 @@ namespace NewVivaApi.Services
                 keyPairs.Add("primaryColor", "#2000d0");
             }
 
-            if(generalContractorRecord.DommainName != null)
+            if (generalContractorRecord.DommainName != null)
             {
                 keyPairs.Add("{{DomainName}}", "https://" + generalContractorRecord.DommainName + domainUrlBase);
             }
@@ -437,7 +608,7 @@ namespace NewVivaApi.Services
             keyPairs.Add("{{SubcontractorName}}", subcontractorRecord.SubcontractorName);
             keyPairs.Add("{{ProjectName}}", projectNameRecord.ProjectName);
             keyPairs.Add("{{UserName}}", userProfileRecord.UserName);
-                        
+
             if (generalContractorRecord.GeneralContractorName != null)
             {
                 keyPairs.Add("{{GeneralContractorName}}", generalContractorRecord.GeneralContractorName);
@@ -486,7 +657,7 @@ namespace NewVivaApi.Services
 
             keyPairs.Add("{{SubcontractorName}}", subcontractorRecord.SubcontractorName);
             keyPairs.Add("{{ProjectName}}", projectNameRecord.ProjectName);
-            keyPairs.Add("{{UserName}}", userProfileRecord.UserName);   
+            keyPairs.Add("{{UserName}}", userProfileRecord.UserName);
 
             if (generalContractorRecord.GeneralContractorName != null)
             {
@@ -537,7 +708,7 @@ namespace NewVivaApi.Services
             keyPairs.Add("{{PayAppID}}", payAppRecord.VivaPayAppId);
             keyPairs.Add("{{ProjectName}}", projectIDRecord.ProjectName);
             keyPairs.Add("{{SubcontractorName}}", subcontractorRecord.SubcontractorName);
-            keyPairs.Add("{{DollarAmount}}", dollaramount.ToString("C2", CultureInfo.CreateSpecificCulture("en-US")));        
+            keyPairs.Add("{{DollarAmount}}", dollaramount.ToString("C2", CultureInfo.CreateSpecificCulture("en-US")));
 
             if (generalcontractorRecord.GeneralContractorName != null)
             {
@@ -686,7 +857,7 @@ namespace NewVivaApi.Services
             keyPairs.Add("{{SubcontractorName}}", subcontractorRecord.SubcontractorName);
             keyPairs.Add("{{PayAppID}}", payAppRecord.VivaPayAppId);
             keyPairs.Add("{{ProjectName}}", projectIDRecord.ProjectName);
-            keyPairs.Add("{{DollarAmount}}", dollaramount.ToString("C2", CultureInfo.CreateSpecificCulture("en-US")));          
+            keyPairs.Add("{{DollarAmount}}", dollaramount.ToString("C2", CultureInfo.CreateSpecificCulture("en-US")));
 
             if (generalcontractorRecord.GeneralContractorName != null)
             {
@@ -737,7 +908,7 @@ namespace NewVivaApi.Services
             keyPairs.Add("{{SubcontractorName}}", subcontractorRecord.SubcontractorName);
             keyPairs.Add("{{PayAppID}}", payAppRecord.VivaPayAppId);
             keyPairs.Add("{{ProjectName}}", projectIDRecord.ProjectName);
-            keyPairs.Add("{{DollarAmount}}", dollaramount.ToString("C2", CultureInfo.CreateSpecificCulture("en-US")));     
+            keyPairs.Add("{{DollarAmount}}", dollaramount.ToString("C2", CultureInfo.CreateSpecificCulture("en-US")));
 
             if (generalcontractorRecord.GeneralContractorName != null)
             {
@@ -786,7 +957,7 @@ namespace NewVivaApi.Services
 
             keyPairs.Add("{{SubcontractorName}}", subcontractorRecord.SubcontractorName);
             keyPairs.Add("{{PayAppID}}", payAppRecord.VivaPayAppId);
-            keyPairs.Add("{{ProjectName}}", projectIDRecord.ProjectName);           
+            keyPairs.Add("{{ProjectName}}", projectIDRecord.ProjectName);
 
             if (generalContractorRecord.GeneralContractorName != null)
             {
@@ -839,6 +1010,5 @@ namespace NewVivaApi.Services
     }
 }
 
-            
 
-        
+

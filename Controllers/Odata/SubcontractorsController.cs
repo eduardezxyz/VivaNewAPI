@@ -18,6 +18,8 @@ using AutoMapper;
 using NewVivaApi.Authentication;
 using NewVivaApi.Extensions;
 using Newtonsoft.Json.Linq;
+using NewVivaApi.Services;
+using Microsoft.AspNet.Identity;
 
 namespace NewVivaApi.Controllers.Odata
 {
@@ -28,21 +30,22 @@ namespace NewVivaApi.Controllers.Odata
         private readonly IMapper _mapper;
         private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly EmailService _emailService;
 
         // private readonly IFinancialSecurityService _financialSecurityService;
-        // private readonly IEmailService _emailService;
-        // private readonly IUserManager _userManager;
 
         public SubcontractorsController(
             AppDbContext context,
             IMapper mapper,
+            EmailService emailService,
             IHttpContextAccessor httpContextAccessor,
             Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager
             )
         {
-           _context = context;
+            _context = context;
             _mapper = mapper;
             _userManager = userManager;
+            _emailService = emailService;
             _httpContextAccessor = httpContextAccessor;
         }
 
@@ -156,8 +159,10 @@ namespace NewVivaApi.Controllers.Odata
             model.SubcontractorId = dbModel.SubcontractorId;
             var resultModel = _mapper.Map<SubcontractorsVw>(dbModel);
 
-            //var es = new EmailService();
-            //es.sendAdminEmailNewSubcontractor(User.Identity.GetUserId(), model.SubcontractorID);
+            var userId = User.Identity.GetUserId();
+            var genConId = model.SubcontractorId;
+            Console.WriteLine($"Before email services: userId = {userId},  GenConID = {genConId}");
+            _emailService.sendAdminEmailNewSubcontractor(User.Identity.GetUserId(), model.SubcontractorId);
 
             await RegisterNewSubcontractorUser(resultModel);
             return Created(resultModel);

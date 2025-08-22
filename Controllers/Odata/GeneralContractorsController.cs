@@ -32,7 +32,6 @@ namespace NewVivaApi.Controllers.Odata
         private readonly IMapper _mapper;
         private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
         private readonly IHttpContextAccessor _httpContextAccessor;
-
         private readonly EmailService _emailService;
 
         public GeneralContractorsController(
@@ -130,12 +129,13 @@ namespace NewVivaApi.Controllers.Odata
             //var subdomainService = new SubdomainService();
             //await subdomainService.AddNewSubdomainAsync(model.DomainName); Line was commented / not active in original code
 
-            //EmailService es = new EmailService();
-            //es.sendAdminEmailNewGeneralContractor(User.Identity.GetUserId(), model.GeneralContractorID);
+            var userId = User.Identity.GetUserId();
+            var genConId = model.GeneralContractorId;
+            Console.WriteLine($"Before email services: userId = {userId},  GenConID = {genConId}");
+            _emailService.sendAdminEmailNewGeneralContractor(userId, genConId);
 
             //Register new user
             await RegisterNewGeneralContractor(model);
-
             return Created(model);
         }
 

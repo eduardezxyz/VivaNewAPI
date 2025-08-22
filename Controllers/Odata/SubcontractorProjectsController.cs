@@ -84,21 +84,7 @@ namespace NewVivaApi.Controllers.Odata
             */
 
             var model = _context.SubcontractorProjectsVws
-                .OrderBy(sp => sp.SubcontractorProjectId)
-                .Select(sp => new
-                {
-                    SubcontractorProjectID = sp.SubcontractorProjectId,
-                    SubcontractorID = sp.SubcontractorId,
-                    ProjectID = sp.ProjectId,
-                    ProjectName = sp.ProjectName,
-                    GeneralContractorID = sp.GeneralContractorId,
-                    DiscountPct = sp.DiscountPct,
-                    JsonAttributes = sp.JsonAttributes ?? null,
-                    StatusID = sp.StatusId,
-                    SubcontractorName = sp.SubcontractorName,
-                    ContactEmail = sp.ContactEmail,
-                    Contact = sp.Contact
-                });
+                .OrderBy(sp => sp.SubcontractorProjectId);
 
             if (model == null)
                 return BadRequest();

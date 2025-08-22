@@ -28,18 +28,7 @@ public class ProjectsController : ODataController
     [HttpGet]
     public ActionResult Get()
     {
-        var model = _context.ProjectsVws
-            .Select(p => new
-            {
-                ProjectID = p.ProjectId,
-                VivaProjectID = p.VivaProjectId,
-                GeneralContractorID = p.GeneralContractorId,
-                StartDT = p.StartDt,
-                StatusID = p.StatusId,
-                JsonAttributes = p.JsonAttributes,
-                ProjectName = p.ProjectName,
-                UnpaidBalance = p.UnpaidBalance
-            });
+        var model = _context.ProjectsVws;
 
         if (!model.Any())
             return BadRequest("No records found.");
