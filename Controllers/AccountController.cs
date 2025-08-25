@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 // using VivaPayAppAPI.Providers; // if you still have helper classes
 // using VivaPayAppAPI.Results;
+using NewVivaApi.Services;
 
 namespace VivaPayAppAPI.Controllers;
 
@@ -38,8 +39,7 @@ public class AccountController : ControllerBase
     private readonly IdentityDbContext _identityDb;
     private readonly AppDbContext _appDbcontext;
     private readonly IHttpContextAccessor _httpContextAccessor;
-
-    //private readonly EmailService _emailService;              // your existing service
+    private readonly EmailService _emailService;              // your existing service
     //private readonly PasswordGenerationService _pwdService;   // your existing service
 
     public AccountController(
@@ -48,6 +48,7 @@ public class AccountController : ControllerBase
         IAuthenticationSchemeProvider schemeProvider,
         IdentityDbContext identityDb,
         IHttpContextAccessor httpContextAccessor,
+        EmailService emailService,
         AppDbContext appDb)
     //EmailService emailService,
     //PasswordGenerationService pwdService)
@@ -58,8 +59,7 @@ public class AccountController : ControllerBase
         _identityDb = identityDb;
         _appDbcontext = appDb;
         _httpContextAccessor = httpContextAccessor;
-
-        //_emailService  = emailService;
+        _emailService = emailService;
         //_pwdService    = pwdService;
     }
 
@@ -402,7 +402,7 @@ public class AccountController : ControllerBase
             Console.WriteLine($"Generated password for user: {extractedData.Email}");
 
             //Create model with proper constructor and dependencies
-            var model = new RegisterSystemUserModel(_appDbcontext, _userManager, _httpContextAccessor)
+            var model = new RegisterSystemUserModel(_appDbcontext, _userManager, _emailService, _httpContextAccessor)
             {
                 UserName = extractedData.Email,
                 FirstName = extractedData.FirstName,
@@ -619,7 +619,7 @@ public class AccountController : ControllerBase
             return false;
         }
     }
-    
+
     public class RegisterDataModel
     {
         public string FirstName { get; set; }

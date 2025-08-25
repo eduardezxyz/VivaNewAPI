@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using NewVivaApi.Authentication;
+using NewVivaApi.Services;
 
 namespace NewVivaApi.Models;
 
@@ -26,18 +27,20 @@ public class RegisterSystemUserModel
     private string _userId { get; set; }
     private readonly AppDbContext _context;
     private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
-    //private readonly IEmailService _emailService;
+    private readonly EmailService _emailService;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
 
     // Constructor with dependency injection
     public RegisterSystemUserModel(AppDbContext context,
         UserManager<ApplicationUser> userManager,
+        EmailService emailService,
         IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _userManager = userManager;
         _httpContextAccessor = httpContextAccessor;
+        _emailService = emailService;
     }
 
     // public RegisterSystemUserModel(string userName, string firstName, string lastName, string phoneNumber, 
@@ -68,7 +71,7 @@ public class RegisterSystemUserModel
         await CreateAspNetUserAsync();
         await CreateUserProfileAsync();
         await CreateVivaRoleAsync();
-        //await SendEmailNotificationAsync(creatorUserName);
+        await SendEmailNotificationAsync(creatorUserName);
     }
 
     private async Task CreateUserProfileAsync() //TODO
@@ -192,27 +195,27 @@ public class RegisterSystemUserModel
     }
     
 
-    // private async Task SendEmailNotificationAsync(string creatorUserName)
-    //     {
-    //         if (this.isAdminTF)
-    //         {
-    //             // Send Admin Email
-    //             await _emailService.SendNewAdminEmailAsync(this._userId, this.Password);
-    //             await _emailService.SendAdminEmailNewAdminAsync(this._userId);
-    //         }
-    //         else if (this.isGCTF)
-    //         {
-    //             // Send GC Email
-    //             await _emailService.SendNewGeneralContractorEmailAsync(this._userId, this.CompanyID, this.Password);
-    //             await _emailService.SendAdminEmailNewGeneralContractorUserAsync(this._userId, this.CompanyID, creatorUserName);
-    //         }
-    //         else if (this.isSCTF)
-    //         {
-    //             // Send SC Email
-    //             await _emailService.SendNewSubcontractorEmailAsync(this._userId, this.CompanyID, this.Password);
-    //             await _emailService.SendAdminEmailNewSubcontractorUserAsync(this._userId, this.CompanyID, creatorUserName);
-    //         }
-    //     }
+    private async Task SendEmailNotificationAsync(string creatorUserName)
+        {
+            if (this.isAdminTF)
+            {
+                // Send Admin Email
+                await _emailService.sendNewAdminEmail(this._userId, this.Password);
+                await _emailService.sendAdminEmailNewAdmin(this._userId);
+            }
+            else if (this.isGCTF)
+            {
+                // Send GC Email
+                await _emailService.sendNewGeneralContractorEmail(this._userId, this.CompanyID, this.Password);
+                await _emailService.sendAdminEmailNewGeneralContractorUser(this._userId, this.CompanyID, creatorUserName);
+            }
+            else if (this.isSCTF)
+            {
+                // Send SC Email
+                await _emailService.sendNewSubcontractorEmail(this._userId, this.CompanyID, this.Password);
+                await _emailService.sendAdminEmailNewSubcontractorUser(this._userId, this.CompanyID, creatorUserName);
+            }
+        }
 
 
 }

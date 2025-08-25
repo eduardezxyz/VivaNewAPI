@@ -256,7 +256,7 @@ namespace NewVivaApi.Controllers.Odata
             string generatedPassword = PasswordGenerationService.GeneratePassword(requirements);
             Console.WriteLine($"Generated password for user: {userName}");
 
-            RegisterSystemUserModel newGeneralContractorUser = new RegisterSystemUserModel(_context, _userManager, _httpContextAccessor)
+            RegisterSystemUserModel newGeneralContractorUser = new RegisterSystemUserModel(_context, _userManager,_emailService, _httpContextAccessor)
             {
                 UserName = userName,
                 FirstName = firstName,
