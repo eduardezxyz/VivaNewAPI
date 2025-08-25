@@ -421,17 +421,66 @@ namespace NewVivaApi.Services
 
         public void sendAdminEmailNewSubcontractor(string UserID, int SubcontractorID)
         {
+            Console.WriteLine($"=== STARTING sendAdminEmailNewSubcontractor ===");
+            Console.WriteLine($"Input Parameters - UserID: {UserID}, SubcontractorID: {SubcontractorID}");
+
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
+            if (userProfileRecord == null)
+            {
+                Console.WriteLine($"ERROR: User profile not found for UserID: {UserID}");
+                return;
+            }
+            else
+            {
+                Console.WriteLine($"Found user: {userProfileRecord.UserName} - {userProfileRecord.FirstName} {userProfileRecord.LastName}");
+            }
+
+            Console.WriteLine($"Looking up SubContractor for ID: {SubcontractorID}");
             SubcontractorsVw subcontractorRecord = _context.SubcontractorsVws.FirstOrDefault(sc => sc.SubcontractorId == SubcontractorID);
+
+            if (subcontractorRecord == null)
+            {
+                Console.WriteLine($"ERROR: SubContractor not found for ID: {SubcontractorID}");
+                return;
+            }
+            else
+            {
+                Console.WriteLine($"Found SC: {subcontractorRecord.SubcontractorName}");
+            }
+
+            Console.WriteLine($"Getting admin email list...");
             string emailList = listOfAdminsToNotify();
+            Console.WriteLine($"Admin email list: {emailList}");
+
+            if (string.IsNullOrEmpty(emailList))
+            {
+                Console.WriteLine($"WARNING: No admin emails found!");
+                return;
+            }
 
             string templateHTML = "AdminNewSC";
-            Dictionary<string, string> keyPairs = new Dictionary<string, string>();
+            Console.WriteLine($"Using email template: {templateHTML}");
 
+            Dictionary<string, string> keyPairs = new Dictionary<string, string>();
             keyPairs.Add("{{SubcontractorName}}", subcontractorRecord.SubcontractorName);
             keyPairs.Add("{{UserName}}", userProfileRecord.UserName);
 
-            generateEmails(templateHTML, keyPairs, emailList, "New Subcontractor Added", userProfileRecord.UserName);
+            Console.WriteLine($"Email placeholders:");
+            foreach (var kvp in keyPairs)
+            {
+                Console.WriteLine($"  {kvp.Key} = {kvp.Value}");
+            }
+
+            Console.WriteLine($"Calling generateEmails...");
+            Console.WriteLine($"  Template: {templateHTML}");
+            Console.WriteLine($"  Recipients: {emailList}");
+            Console.WriteLine($"  Subject: New General Contractor Added");
+            Console.WriteLine($"  From User: {userProfileRecord.UserName}");
+
+            string result = generateEmails(templateHTML, keyPairs, emailList, "New Subcontractor Added", userProfileRecord.UserName);
+
+            Console.WriteLine($"generateEmails result: {result}");
+            Console.WriteLine($"=== COMPLETED sendAdminEmailNewSubcontractor ===");
         }
 
         public void sendAdminEmailNewGeneralContractor(string UserID, int GeneralContractorID)
@@ -439,8 +488,6 @@ namespace NewVivaApi.Services
             Console.WriteLine($"=== STARTING sendAdminEmailNewGeneralContractor ===");
             Console.WriteLine($"Input Parameters - UserID: {UserID}, GeneralContractorID: {GeneralContractorID}");
 
-            // Debug user lookup
-            Console.WriteLine($"Looking up user profile for UserID: {UserID}");
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
 
             if (userProfileRecord == null)
@@ -453,7 +500,6 @@ namespace NewVivaApi.Services
                 Console.WriteLine($"Found user: {userProfileRecord.UserName} - {userProfileRecord.FirstName} {userProfileRecord.LastName}");
             }
 
-            // Debug GC lookup
             Console.WriteLine($"Looking up General Contractor for ID: {GeneralContractorID}");
             GeneralContractorsVw generalContractorsRecord = _context.GeneralContractorsVws.FirstOrDefault(gc => gc.GeneralContractorId == GeneralContractorID);
 
@@ -467,7 +513,6 @@ namespace NewVivaApi.Services
                 Console.WriteLine($"Found GC: {generalContractorsRecord.GeneralContractorName}");
             }
 
-            // Debug admin list
             Console.WriteLine($"Getting admin email list...");
             string emailList = listOfAdminsToNotify();
             Console.WriteLine($"Admin email list: {emailList}");
