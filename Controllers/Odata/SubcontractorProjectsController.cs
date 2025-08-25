@@ -16,6 +16,8 @@ using NewVivaApi.Data;
 using NewVivaApi.Models;
 using System.Text.Json;
 using AutoMapper;
+using Microsoft.AspNet.Identity;
+using NewVivaApi.Services;
 
 namespace NewVivaApi.Controllers.Odata
 {
@@ -24,13 +26,13 @@ namespace NewVivaApi.Controllers.Odata
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
-        // private readonly IEmailService _emailService;
+        private readonly EmailService _emailService;
 
-        public SubcontractorProjectsController(AppDbContext context, IMapper mapper)
+        public SubcontractorProjectsController(AppDbContext context, IMapper mapper, EmailService emailService)
         {
             _context = context;
             _mapper = mapper;
-            // _emailService = emailService;
+            _emailService = emailService;
         }
 
         private IQueryable<SubcontractorProjectsVw> GetSecureModel()
@@ -125,11 +127,25 @@ namespace NewVivaApi.Controllers.Odata
                 return BadRequest();
             }
             */
-
-            if (!ModelState.IsValid)
+            Console.WriteLine("STARTING POST");
+            // Set ProjectName and SubcontractorName to empty or fetch from database
+            if (string.IsNullOrEmpty(model.ProjectName))
             {
-                return BadRequest(ModelState);
+                var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == model.ProjectId);
+                model.ProjectName = project?.ProjectName ?? "Unknown Project";
             }
+
+            if (string.IsNullOrEmpty(model.SubcontractorName))
+            {
+                var subcontractor = await _context.Subcontractors.FirstOrDefaultAsync(s => s.SubcontractorId == model.SubcontractorId);
+                model.SubcontractorName = subcontractor?.SubcontractorName ?? "Unknown Subcontractor";
+            }
+
+            // Console.WriteLine($"Model: {model}");
+            // if (!ModelState.IsValid)
+            // {
+            //     return BadRequest(ModelState);
+            // }
 
             // Validate that Subcontractor and Project exist
             var subcontractorExists = await _context.Subcontractors
@@ -168,19 +184,22 @@ namespace NewVivaApi.Controllers.Odata
             var resultModel = _mapper.Map<SubcontractorProjectsVw>(dbModel);
 
             // TODO: Add email service back
-            /*
             var scp = await _context.SubcontractorProjectsVws
                 .FirstOrDefaultAsync(l => l.SubcontractorProjectId == dbModel.SubcontractorProjectId);
-            
+
             if (scp != null)
             {
-                await _emailService.SendSCAddedToProject(User.Identity.GetUserId(), 
-                    scp.SubcontractorId, scp.ProjectName);
+                var userId = User.Identity.GetUserId();
+                var genConId = model.SubcontractorId;
+                Console.WriteLine($"Before email services: userId = {userId},  SubConID = {scp.SubcontractorId}");
+                await _emailService.sendSCAddedToProject(userId, scp.SubcontractorId, scp.ProjectName);
+                return Created(scp);
             }
-            */
 
-            return Created(resultModel);
+            return StatusCode(500, "Created record but couldn't retrieve it");
         }
+
+
 
         [HttpPatch]
         public async Task<IActionResult> Patch(int key, [FromBody] SubcontractorProjectsVw patch)

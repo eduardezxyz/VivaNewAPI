@@ -24,7 +24,7 @@ namespace NewVivaApi.Controllers
         }
 
 
-        // UNCOMMENT THIS WHEN TESTING FRONT END
+        // // UNCOMMENT THIS WHEN TESTING FRONT END
         public async Task<IActionResult> Get(string name)
         {
             // TODO: Replace with your real identity check

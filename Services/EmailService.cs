@@ -690,7 +690,7 @@ namespace NewVivaApi.Services
             generateEmails(templateHTML, keyPairs, emailList, "Reports Available for Your Review", userProfileRecord.UserName);
         }
 
-        public void sendSCAddedToProject(string UserID, int SubcontractorID, string ProjectName)
+        public async Task sendSCAddedToProject(string UserID, int SubcontractorID, string ProjectName)
         {
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             SubcontractorsVw subcontractorRecord = _context.SubcontractorsVws.FirstOrDefault(sc => sc.SubcontractorId == SubcontractorID);
