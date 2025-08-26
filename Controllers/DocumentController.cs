@@ -12,6 +12,7 @@ using System.Security.Claims;
 using System.IO;
 using System.Configuration;
 using Microsoft.Extensions.Logging;
+using NewVivaApi.Services;
 
 namespace NewVivaApi.Controllers
 {
@@ -22,15 +23,15 @@ namespace NewVivaApi.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
-        //private readonly EmailService _emailService;
+        private readonly EmailService _emailService;
         private readonly ILogger<DocumentController> _logger;
 
 
-        public DocumentController(AppDbContext context, ILogger<DocumentController> logger, IConfiguration configuration) // EmailService emailService
+        public DocumentController(AppDbContext context, ILogger<DocumentController> logger, IConfiguration configuration, EmailService emailService)
         {
             _context = context;
             _configuration = configuration;
-            //_emailService = emailService;
+            _emailService = emailService;
             _logger = logger;
         }
 
@@ -149,21 +150,21 @@ namespace NewVivaApi.Controllers
                     case 3: // Sign Up Forms
                         var subproj = await _context.SubcontractorProjectsVws
                             .FirstOrDefaultAsync(p => p.SubcontractorProjectId == keyID);
-                        
+
                         if (subproj == null)
                         {
                             return BadRequest($"Invalid Subcontractor Project ID: {keyID}. Please verify the project exists and try again.");
                         }
-                        
+
                         // Verify the subcontractor exists
                         var subcontractorExists = await _context.Subcontractors
                             .AnyAsync(s => s.SubcontractorId == subproj.SubcontractorId);
-                        
+
                         if (!subcontractorExists)
                         {
                             return BadRequest($"Data integrity error: Subcontractor (ID: {subproj.SubcontractorId}) associated with this project no longer exists. Please contact support.");
                         }
-                        
+
                         uploadedDoc.SubcontractorProjectId = keyID;
                         uploadedDoc.SubcontractorId = subproj.SubcontractorId;
                         break;
@@ -171,36 +172,36 @@ namespace NewVivaApi.Controllers
                         // Verify the subcontractor exists
                         var w9SubcontractorExists = await _context.Subcontractors
                             .AnyAsync(s => s.SubcontractorId == keyID);
-                        
+
                         if (!w9SubcontractorExists)
                         {
                             return BadRequest($"Invalid Subcontractor ID: {keyID}. Please verify the subcontractor exists and try again.");
                         }
-                        
+
                         uploadedDoc.SubcontractorId = keyID;
                         break;
                     case 5: // Upload Report Documents
                         // Verify the general contractor exists
                         var gcExists = await _context.GeneralContractors
                             .AnyAsync(gc => gc.GeneralContractorId == keyID);
-                        
+
                         if (!gcExists)
                         {
                             return BadRequest($"Invalid General Contractor ID: {keyID}. Please verify the contractor exists and try again.");
                         }
-                        
+
                         uploadedDoc.GeneralContractorId = keyID;
                         break;
                     case 6: // Sample Forms
                         // Verify the subcontractor exists
                         var sampleSubcontractorExists = await _context.Subcontractors
                             .AnyAsync(s => s.SubcontractorId == keyID);
-                        
+
                         if (!sampleSubcontractorExists)
                         {
                             return BadRequest($"Invalid Subcontractor ID: {keyID}. Please verify the subcontractor exists and try again.");
                         }
-                        
+
                         uploadedDoc.SubcontractorId = keyID;
                         break;
                     default:
@@ -223,22 +224,27 @@ namespace NewVivaApi.Controllers
 
 
                 //Email service
-                // if (nd != null)
-                // {
-                //     var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (nd != null)
+                {
+                    Console.WriteLine("in document email service");
+                    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-                //     if (nd.GeneralContractorId != null && userId != null)
-                //         await _emailService.SendGCEmailReportsAvailable(userId, nd.GeneralContractorId.Value);
-
-                //     if (documentType == 2 && nd.PayAppId != null && userId != null)
-                //     {
-                //         await _emailService.SendLienReleaseSubmittedEmail(userId, nd.PayAppId.Value);
-                //     }
-                //     else if (documentType == 3 && userId != null)
-                //     {
-                //         await _emailService.SendSCNewSignupForm(userId, uploadedDoc.DocumentId);
-                //     }
-                // }
+                    if (nd.GeneralContractorId != null && userId != null)
+                    {
+                        Console.WriteLine("in document email service");
+                        await _emailService.sendGCEmailReportsAvailable(userId, nd.GeneralContractorId.Value);
+                    }
+                    if (documentType == 2 && nd.PayAppId != null && userId != null)
+                    {
+                        Console.WriteLine("in document email service");
+                        await _emailService.sendLeinReleaseSubmittedEmail(userId, nd.PayAppId.Value);
+                    }
+                    else if (documentType == 3 && userId != null)
+                    {
+                        Console.WriteLine("in document email service");
+                        await _emailService.sendSCNewSignupForm(userId, uploadedDoc.DocumentId);
+                    }
+                }
             }
 
             return Ok();

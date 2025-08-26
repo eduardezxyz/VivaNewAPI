@@ -650,7 +650,7 @@ namespace NewVivaApi.Services
 
         }
 
-        public void sendGCEmailReportsAvailable(string UserID, int GeneralContractorID)
+        public async Task sendGCEmailReportsAvailable(string UserID, int GeneralContractorID)
         {
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             GeneralContractorsVw generalContractorRecord = _context.GeneralContractorsVws.FirstOrDefault(gc => gc.GeneralContractorId == GeneralContractorID);
@@ -738,7 +738,7 @@ namespace NewVivaApi.Services
             generateEmails(templateHTML, keyPairs, emailList, "Subcontractor Added to Project", userProfileRecord.UserName);
         }
 
-        public void sendSCNewSignupForm(string UserID, int documentID)
+        public async Task sendSCNewSignupForm(string UserID, int documentID)
         {
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             Document attachment = _context.Documents.FirstOrDefault(d => d.DocumentId == documentID);
@@ -1039,7 +1039,7 @@ namespace NewVivaApi.Services
             generateEmails(templateHTML, keyPairs, emailList, "Pay App Paid", userProfileRecord.UserName);
         }
 
-        public void sendLeinReleaseSubmittedEmail(string UserID, int PayAppID)
+        public async Task sendLeinReleaseSubmittedEmail(string UserID, int PayAppID)
         {
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             PayAppsVw payAppRecord = _context.PayAppsVws.FirstOrDefault(id => id.PayAppId == PayAppID);
