@@ -394,7 +394,7 @@ namespace NewVivaApi.Services
             generateEmails(templateHTML, keyPairs, Email, "Password changed", Email);
         }
 
-        public void sendPayAppToApproveEmail(string UserID, int GeneralContractorID)
+        public async Task sendPayAppToApproveEmail(string UserID, int GeneralContractorID)
         {
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             GeneralContractorsVw generalContractorRecord = _context.GeneralContractorsVws.FirstOrDefault(gc => gc.GeneralContractorId == GeneralContractorID);
@@ -425,7 +425,7 @@ namespace NewVivaApi.Services
             generateEmails(templateHTML, keyPairs, emailList, "New PayApp to Approve", userProfileRecord.UserName);
         }
 
-        public void sendVivaNotificationNewPayApp(string UserID, int ProjectID, int GeneralContractorID, int PayAppID)
+        public async Task sendVivaNotificationNewPayApp(string UserID, int ProjectID, int GeneralContractorID, int PayAppID)
         {
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             GeneralContractorsVw generalContractorRecord = _context.GeneralContractorsVws.FirstOrDefault(gc => gc.GeneralContractorId == GeneralContractorID);
