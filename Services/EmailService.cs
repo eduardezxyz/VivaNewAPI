@@ -788,7 +788,7 @@ namespace NewVivaApi.Services
             generateEmails(templateHTML, keyPairs, emailList, "New Sign-Up Form Added to Project", userProfileRecord.UserName, attachment);
         }
 
-        public void sendAdminPayAppApproved(string UserID, int ProjectID, int SubcontractorID, int PayAppID)
+        public async Task sendAdminPayAppApproved(string UserID, int ProjectID, int SubcontractorID, int PayAppID)
         {
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             SubcontractorsVw subcontractorRecord = _context.SubcontractorsVws.FirstOrDefault(sc => sc.SubcontractorId == SubcontractorID);
