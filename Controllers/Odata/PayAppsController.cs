@@ -19,6 +19,23 @@ using Microsoft.Extensions.Logging;
 using NewVivaApi.Extensions;
 using System.Text.Json;
 using Microsoft.AspNet.Identity;
+using NewVivaApi.Authentication;
+
+
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.Extensions.Options;
+using NewVivaApi.Authentication.Models; // ApplicationUser, Role
+//using NewVivaApi.Models.Exceptions;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+// using VivaPayAppAPI.Providers; // if you still have helper classes
+// using VivaPayAppAPI.Results;
 
 namespace NewVivaApi.Controllers.OData
 {
@@ -33,14 +50,23 @@ namespace NewVivaApi.Controllers.OData
         // private readonly IWebHookService _webHookService;
         private readonly PayAppPaymentService _payAppPaymentService;
         private readonly ILogger<PayAppsController> _logger;
+        private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
+        //private readonly IdentityDbContext _identityDbContext;
 
-        public PayAppsController(AppDbContext context, ILogger<PayAppsController> logger, EmailService emailService, IMapper mapper /*, IFinancialSecurityService financialSecurityService */)
+
+        public PayAppsController(AppDbContext context, ILogger<PayAppsController> logger,
+        IdentityDbContext identityDbContext,
+        EmailService emailService, IMapper mapper,
+        Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager
+        /*, IFinancialSecurityService financialSecurityService */)
         {
             _context = context;
             _mapper = mapper;
+            //_identityDbContext = identityDbContext;
             // _financialSecurityService = financialSecurityService;
             _logger = logger;
             _emailService = emailService;
+            _userManager = userManager;
         }
 
         private IQueryable<PayAppsVw> GetSecureModel()
@@ -245,6 +271,116 @@ namespace NewVivaApi.Controllers.OData
 
         }
 
+        [HttpPatch("{key}")]
+        public async Task<IActionResult> Patch(int key, [FromBody] JsonElement patchData)
+        {
+            try
+            {
+                // Find existing PayApp
+                var databaseModel = await _context.PayApps
+                    .FirstOrDefaultAsync(s => s.PayAppId == key && s.DeleteDt == null);
+
+                if (databaseModel == null)
+                    return NotFound();
+
+                var createdByUser = databaseModel.CreatedByUser;
+                var originalCreateDt = databaseModel.CreateDt;
+
+                // Map existing database model to view model
+                var model = _mapper.Map<PayAppsVw>(databaseModel);
+                int previousStatusId = model.StatusId;
+
+                // Extract and apply patch data
+                var patchModel = ExtractPayAppData(patchData);
+
+                // Apply changes (only update non-null/non-zero values)
+                if (!string.IsNullOrEmpty(patchModel.VivaPayAppId))
+                    model.VivaPayAppId = patchModel.VivaPayAppId;
+                if (patchModel.StatusId > 0)
+                    model.StatusId = patchModel.StatusId;
+                if (patchModel.RequestedAmount > 0)
+                    model.RequestedAmount = patchModel.RequestedAmount;
+                if (patchModel.ApprovedAmount.HasValue)
+                    model.ApprovedAmount = patchModel.ApprovedAmount;
+                if (!string.IsNullOrEmpty(patchModel.JsonAttributes))
+                    model.JsonAttributes = patchModel.JsonAttributes;
+
+                // Map back to database model
+                _mapper.Map(model, databaseModel);
+
+                // Preserve audit fields
+                databaseModel.CreateDt = originalCreateDt;
+                databaseModel.CreatedByUser = createdByUser;
+                databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
+                databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
+
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                await _context.SaveChangesAsync();
+
+                // Reconcile payment amounts
+                try
+                {
+                    var httpContextAccessor = HttpContext.RequestServices.GetService<IHttpContextAccessor>();
+                    var payAppPaymentService = new PayAppPaymentService(model.PayAppId, httpContextAccessor);
+                    await payAppPaymentService.ReconcileTotalDollarAmount();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during payment reconciliation for PayApp {PayAppId}", model.PayAppId);
+                }
+
+                // Email notifications based on status changes
+                await HandleStatusChangeNotifications(model, previousStatusId, createdByUser);
+
+                var resultModel = _mapper.Map<PayAppsVw>(databaseModel);
+                return Ok(resultModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating PayApp {PayAppId}", key);
+                return StatusCode(500, new { Type = "error", Message = "Internal server error" });
+            }
+        }
+
+        [HttpDelete("{key}")]
+        public async Task<IActionResult> Delete(int key)
+        {
+            try
+            {
+                // Auth check (when ready)
+                /*
+                if (User.Identity.IsServiceUser())
+                {
+                    return BadRequest();
+                }
+                */
+
+                var model = await _context.PayApps
+                    .FirstOrDefaultAsync(s => s.PayAppId == key && s.DeleteDt == null);
+
+                if (model == null)
+                    return NotFound();
+
+                // Soft delete
+                model.DeleteDt = DateTimeOffset.UtcNow;
+                model.LastUpdateDt = DateTimeOffset.UtcNow;
+                model.LastUpdateUser = User.Identity?.Name ?? "Unknown";
+
+                await _context.SaveChangesAsync();
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting PayApp {PayAppId}", key);
+                return StatusCode(500, new { Type = "error", Message = "Internal server error" });
+            }
+        }
+
         // Helper methods
         private PayAppDataModel ExtractPayAppData(JsonElement data)
         {
@@ -322,6 +458,88 @@ namespace NewVivaApi.Controllers.OData
                 }
             }
             return null;
+        }
+
+        // Helper method for status change notifications
+        private async Task HandleStatusChangeNotifications(PayAppsVw model, int previousStatusId, string createdByUser)
+        {
+            try
+            {
+                if (model.StatusId == 2 && previousStatusId != 2)
+                {
+                    var spv = await _context.PayAppsVws.FirstOrDefaultAsync(l => l.PayAppId == model.PayAppId);
+                    if (spv != null)
+                    {
+                        await _emailService.sendPayAppToApproveEmail(User.Identity.GetUserId(), spv.GeneralContractorId);
+                        await _emailService.sendVivaNotificationNewPayApp(User.Identity.GetUserId(), spv.ProjectId, spv.GeneralContractorId, spv.PayAppId);
+                    }
+                }
+
+                if (model.StatusId == 3 && previousStatusId != 3)
+                {
+                    var paa = await _context.PayAppsVws.FirstOrDefaultAsync(l => l.PayAppId == model.PayAppId);
+                    if (paa != null)
+                    {
+                        await _emailService.sendAdminPayAppApproved(User.Identity.GetUserId(), paa.ProjectId, paa.SubcontractorId, paa.PayAppId);
+                        await _emailService.sendSCPayAppApproved(User.Identity.GetUserId(), paa.ProjectId, paa.SubcontractorId, paa.PayAppId);
+                        await _emailService.sendSCNeedLienRelease(User.Identity.GetUserId(), paa.ProjectId, paa.SubcontractorId, paa.PayAppId);
+                    }
+                }
+
+                if (model.StatusId == 4 && previousStatusId != 4)
+                {
+                    string userId = null;
+                    var isCreatedByUserServiceUser = new ServiceUser();
+
+                    if (!string.IsNullOrEmpty(createdByUser))
+                    {
+                        //userId = _context.AspNetUsers.FirstOrDefault(x => x.Email == createdByUser)?.Id;
+                        var user = await _userManager.FindByEmailAsync(createdByUser);
+                        userId = user?.Id;
+
+                        if (!string.IsNullOrEmpty(userId))
+                        {
+                            isCreatedByUserServiceUser = _context.ServiceUsers.FirstOrDefault(x => x.UserId == userId);
+                            if (isCreatedByUserServiceUser != null)
+                            {
+                                var whs = new WebHookService();
+                                await whs.PostWebHookDataAsync(isCreatedByUserServiceUser.WebHookUrl, model.PayAppId, model.VivaPayAppId, isCreatedByUserServiceUser.BearerToken, "PaidByViva");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        PayAppsVw pap = _context.PayAppsVws.FirstOrDefault(pp => pp.PayAppId == model.PayAppId);
+                        await _emailService.sendSCPaymentInfo(User.Identity.GetUserId(), pap.ProjectId, pap.SubcontractorId, pap.PayAppId);
+                    }
+                }
+
+                if (model.StatusId == 5 && previousStatusId != 5)
+                {
+                    string userId = null;
+                    var isCreatedByUserServiceUser = new ServiceUser();
+
+                    if (!string.IsNullOrEmpty(createdByUser))
+                    {
+                        var user = await _userManager.FindByEmailAsync(createdByUser);
+                        userId = user?.Id;
+
+                        if (!string.IsNullOrEmpty(userId))
+                        {
+                            isCreatedByUserServiceUser = _context.ServiceUsers.FirstOrDefault(x => x.UserId == userId);
+                            if (isCreatedByUserServiceUser != null)
+                            {
+                                var whs = new WebHookService();
+                                await whs.PostWebHookDataAsync(isCreatedByUserServiceUser.WebHookUrl, model.PayAppId, model.VivaPayAppId, isCreatedByUserServiceUser.BearerToken, "PaidByGC");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending status change notifications for PayApp {PayAppId}", model.PayAppId);
+            }
         }
 
     }

@@ -839,7 +839,7 @@ namespace NewVivaApi.Services
             generateEmails(templateHTML, keyPairs, emailList, "PayApp Approved", userProfileRecord.UserName);
         }
 
-        public void sendSCPayAppApproved(string UserID, int ProjectID, int SubcontractorID, int PayAppID)
+        public async Task sendSCPayAppApproved(string UserID, int ProjectID, int SubcontractorID, int PayAppID)
         {
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             SubcontractorsVw subcontractorRecord = _context.SubcontractorsVws.FirstOrDefault(sc => sc.SubcontractorId == SubcontractorID);
@@ -890,7 +890,7 @@ namespace NewVivaApi.Services
 
         }
 
-        public void sendSCNeedLienRelease(string UserID, int ProjectID, int SubcontractorID, int PayAppID)
+        public async Task sendSCNeedLienRelease(string UserID, int ProjectID, int SubcontractorID, int PayAppID)
         {
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             SubcontractorsVw subcontractorRecord = _context.SubcontractorsVws.FirstOrDefault(sc => sc.SubcontractorId == SubcontractorID);
@@ -937,7 +937,7 @@ namespace NewVivaApi.Services
             generateEmails(templateHTML, keyPairs, emailList, "Lien Release Needed", userProfileRecord.UserName);
         }
 
-        public void sendSCPaymentInfo(string UserID, int ProjectID, int SubcontractorID, int PayAppID)
+        public async Task sendSCPaymentInfo(string UserID, int ProjectID, int SubcontractorID, int PayAppID)
         {
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             SubcontractorsVw subcontractorRecord = _context.SubcontractorsVws.FirstOrDefault(sc => sc.SubcontractorId == SubcontractorID);
