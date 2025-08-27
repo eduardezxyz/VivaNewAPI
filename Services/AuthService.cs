@@ -18,9 +18,11 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore; // Make sure this point
 using LegacyPasswordHasher = Microsoft.AspNet.Identity.PasswordHasher;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNet.Identity;
+using PasswordVerificationResult = Microsoft.AspNetCore.Identity.PasswordVerificationResult;
 
 
 namespace NewVivaApi.Services;
+
 public class AuthService
 {
     private readonly AppDbContext _dbContext;
@@ -67,12 +69,50 @@ public class AuthService
             .FirstOrDefaultAsync(u => u.UserName.ToLower() == model.Username.ToLower());
 
         if (user == null)
+        {
+            Console.WriteLine($"User not found: {user}");
             return null;
+        }
 
-        var passwordHasher = new PasswordHasher();
-        var verificationResult = passwordHasher.VerifyHashedPassword(user.PasswordHash, model.Password);
+        Console.WriteLine($"User found: {user}");
+        bool isValidPassword = false;
 
-        if (verificationResult == Microsoft.AspNet.Identity.PasswordVerificationResult.Success)
+        // Try new .NET Core hasher first
+        var modernHasher = new PasswordHasher<ApplicationUser>();
+        var modernResult = modernHasher.VerifyHashedPassword(user, user.PasswordHash, model.Password);
+
+        if (modernResult == PasswordVerificationResult.Success ||
+            modernResult == PasswordVerificationResult.SuccessRehashNeeded)
+        {
+            isValidPassword = true;
+            Console.WriteLine("modern password hasher used");
+
+
+            // Update hash if needed
+            if (modernResult == PasswordVerificationResult.SuccessRehashNeeded)
+            {
+                user.PasswordHash = modernHasher.HashPassword(user, model.Password);
+                await _identityDbContext.SaveChangesAsync();
+            }
+        }
+        else
+        {
+            // Fallback to legacy hasher for old passwords
+            var legacyHasher = new Microsoft.AspNet.Identity.PasswordHasher();
+            var legacyResult = legacyHasher.VerifyHashedPassword(user.PasswordHash, model.Password);
+
+            if (legacyResult == Microsoft.AspNet.Identity.PasswordVerificationResult.Success)
+            {
+                isValidPassword = true;
+
+                // Migrate to new hash format
+                user.PasswordHash = modernHasher.HashPassword(user, model.Password);
+                await _identityDbContext.SaveChangesAsync();
+                Console.WriteLine("Migrated legacy password hash to modern format");
+            }
+        }
+
+        if (isValidPassword)
         {
             var token = GenerateJwtToken(user);
 
@@ -256,14 +296,14 @@ public class AuthService
     //         new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString())
     //     };
 
-        // var userRoles = (await _userManager.GetRolesAsync(user)).ToList();
+    // var userRoles = (await _userManager.GetRolesAsync(user)).ToList();
 
-        // userRoles.ForEach(r => authClaims.Add(new Claim(ClaimTypes.Role, r)));
+    // userRoles.ForEach(r => authClaims.Add(new Claim(ClaimTypes.Role, r)));
 
-        // if (!string.IsNullOrEmpty(externalToken))
-        // {
-        //     authClaims.Add(new Claim("ExternalToken", externalToken));
-        // }
+    // if (!string.IsNullOrEmpty(externalToken))
+    // {
+    //     authClaims.Add(new Claim("ExternalToken", externalToken));
+    // }
 
     //     var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
 

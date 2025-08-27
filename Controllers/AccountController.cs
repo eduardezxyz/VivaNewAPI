@@ -23,6 +23,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 // using VivaPayAppAPI.Providers; // if you still have helper classes
 // using VivaPayAppAPI.Results;
 using NewVivaApi.Services;
+using NewVivaApi.Extensions;
+using Microsoft.AspNet.Identity;
 
 namespace VivaPayAppAPI.Controllers;
 
@@ -33,24 +35,23 @@ public class AccountController : ControllerBase
 {
     private const string LocalLoginProvider = "Local";
 
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IAuthenticationSchemeProvider _schemeProvider;
     private readonly IdentityDbContext _identityDb;
     private readonly AppDbContext _appDbcontext;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly EmailService _emailService;              // your existing service
+    private readonly EmailService _emailService;
     //private readonly PasswordGenerationService _pwdService;   // your existing service
 
     public AccountController(
-        UserManager<ApplicationUser> userManager,
+        Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         IAuthenticationSchemeProvider schemeProvider,
         IdentityDbContext identityDb,
         IHttpContextAccessor httpContextAccessor,
         EmailService emailService,
         AppDbContext appDb)
-    //EmailService emailService,
     //PasswordGenerationService pwdService)
     {
         _userManager = userManager;
@@ -63,7 +64,7 @@ public class AccountController : ControllerBase
         //_pwdService    = pwdService;
     }
 
-    /*
+
     // GET api/Account/UserInfo
     [HttpGet("UserInfo")]
     [AllowAnonymous] // keep same behavior you had (Bearer-only host auth is OWIN-specific)
@@ -90,272 +91,293 @@ public class AccountController : ControllerBase
         };
     }
 
-    // POST api/Account/Logout
-    [HttpPost("Logout")]
-    public async Task<IActionResult> Logout()
-    {
-        if (User.Identity?.IsServiceUser() == true) return BadRequest();
-
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return Ok();
-    }
-
-    // GET api/Account/ManageInfo?returnUrl=%2F&generateState=true
-    [HttpGet("ManageInfo")]
-    public async Task<ActionResult<ManageInfoViewModel>> GetManageInfo([FromQuery] string returnUrl, [FromQuery] bool generateState = false)
-    {
-        if (User.Identity?.IsServiceUser() == true) return Ok(null);
-
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null) return Ok(null);
-
-        var userLogins = await _userManager.GetLoginsAsync(user);
-        var logins = userLogins.Select(l => new UserLoginInfoViewModel
+    /*
+        // POST api/Account/Logout
+        [HttpPost("Logout")]
+        public async Task<IActionResult> Logout()
         {
-            LoginProvider = l.LoginProvider,
-            ProviderKey = l.ProviderKey
-        }).ToList();
+            if (User.Identity?.IsServiceUser() == true) return BadRequest();
 
-        var hasPassword = await _userManager.HasPasswordAsync(user);
-        if (hasPassword)
-        {
-            logins.Add(new UserLoginInfoViewModel
-            {
-                LoginProvider = LocalLoginProvider,
-                ProviderKey = user.UserName
-            });
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return Ok();
         }
 
-        var externalLogins = await GetExternalLoginsInternal(returnUrl, generateState);
-
-        return new ManageInfoViewModel
+        // GET api/Account/ManageInfo?returnUrl=%2F&generateState=true
+        [HttpGet("ManageInfo")]
+        public async Task<ActionResult<ManageInfoViewModel>> GetManageInfo([FromQuery] string returnUrl, [FromQuery] bool generateState = false)
         {
-            LocalLoginProvider = LocalLoginProvider,
-            Email = user.UserName,
-            Logins = logins,
-            ExternalLoginProviders = externalLogins
-        };
-    }
+            if (User.Identity?.IsServiceUser() == true) return Ok(null);
 
-    // GET api/Account/SendPasswordLink?Email=...&domain=...
-    [HttpGet("SendPasswordLink")]
-    [AllowAnonymous]
-    public async Task<IActionResult> SendPasswordLink([FromQuery] string Email, [FromQuery] string domain)
-    {
-        if (User.Identity?.IsServiceUser() == true) return BadRequest();
-        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Ok(null);
 
-        var user = await _userManager.FindByEmailAsync(Email);
-        if (user != null)
-        {
-            // Extension row in Identity DB
-            var extension = await _identityDb.AspNetUserExtensions.FindAsync(user.Id);
-            if (extension == null)
+            var userLogins = await _userManager.GetLoginsAsync(user);
+            var logins = userLogins.Select(l => new UserLoginInfoViewModel
             {
-                extension = new AspNetUserExtension { Id = user.Id };
-                _identityDb.AspNetUserExtensions.Add(extension);
+                LoginProvider = l.LoginProvider,
+                ProviderKey = l.ProviderKey
+            }).ToList();
+
+            var hasPassword = await _userManager.HasPasswordAsync(user);
+            if (hasPassword)
+            {
+                logins.Add(new UserLoginInfoViewModel
+                {
+                    LoginProvider = LocalLoginProvider,
+                    ProviderKey = user.UserName
+                });
             }
 
-            // Profile in App DB
-            var profile = await _appDb.UserProfiles.FindAsync(user.Id);
+            var externalLogins = await GetExternalLoginsInternal(returnUrl, generateState);
 
-            // Generate token using your existing generator to keep backward compat
-            var token = await TokenGenerator.GetToken(user.Id, _userManager);
-            extension.PasswordResetIdentity = token.Identity;
-            extension.PasswordResetToken = token.Value;
-            extension.PasswordResetTokenExpiration = token.Expiration;
-
-            await _identityDb.SaveChangesAsync();
-
-            var firstName = profile?.FirstName ?? user.FirstName ?? "";
-            _emailService.sendPasswordResetLinkEmail(Email, firstName, user.UserName, extension.PasswordResetIdentity!, domain);
+            return new ManageInfoViewModel
+            {
+                LocalLoginProvider = LocalLoginProvider,
+                Email = user.UserName,
+                Logins = logins,
+                ExternalLoginProviders = externalLogins
+            };
         }
 
-        return Ok();
-    }
-
-    // POST api/Account/ResetFromToken
-    [HttpPost("ResetFromToken")]
-    [AllowAnonymous]
-    public async Task<IActionResult> ResetFromToken([FromBody] ResetFromTokenData data)
-    {
-        if (User.Identity?.IsServiceUser() == true) return BadRequest();
-        if (!ModelState.IsValid) return ValidationProblem(ModelState);
-        if (!string.Equals(data.NewPassword, data.ConfirmPassword)) return BadRequest("Passwords do not match");
-
-        string? userId = null;
-        string? resetToken = null;
-        string? firstName = null;
-        string? email = null;
-
-        // Look up extension by identity (and not expired)
-        var extension = _identityDb.AspNetUserExtensions
-            .FirstOrDefault(e => e.PasswordResetIdentity == data.Token &&
-                                 e.PasswordResetTokenExpiration != null &&
-                                 e.PasswordResetTokenExpiration > DateTime.UtcNow);
-
-        if (extension != null)
+        // GET api/Account/SendPasswordLink?Email=...&domain=...
+        [HttpGet("SendPasswordLink")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SendPasswordLink([FromQuery] string Email, [FromQuery] string domain)
         {
-            userId = extension.Id;
+            if (User.Identity?.IsServiceUser() == true) return BadRequest();
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-            // gather email + name from App DB (profile)
-            var profile = await _appDb.UserProfiles.FindAsync(userId);
-            if (profile != null)
+            var user = await _userManager.FindByEmailAsync(Email);
+            if (user != null)
             {
-                firstName = profile.FirstName;
-                email = profile.UserName;
+                // Extension row in Identity DB
+                var extension = await _identityDb.AspNetUserExtensions.FindAsync(user.Id);
+                if (extension == null)
+                {
+                    extension = new AspNetUserExtension { Id = user.Id };
+                    _identityDb.AspNetUserExtensions.Add(extension);
+                }
+
+                // Profile in App DB
+                var profile = await _appDb.UserProfiles.FindAsync(user.Id);
+
+                // Generate token using your existing generator to keep backward compat
+                var token = await TokenGenerator.GetToken(user.Id, _userManager);
+                extension.PasswordResetIdentity = token.Identity;
+                extension.PasswordResetToken = token.Value;
+                extension.PasswordResetTokenExpiration = token.Expiration;
+
+                await _identityDb.SaveChangesAsync();
+
+                var firstName = profile?.FirstName ?? user.FirstName ?? "";
+                _emailService.sendPasswordResetLinkEmail(Email, firstName, user.UserName, extension.PasswordResetIdentity!, domain);
             }
-
-            // Back-compat: your token unwrapping
-            resetToken = TokenGenerator.ExtractToken(new Token
-            {
-                Identity = extension.PasswordResetIdentity!,
-                Value = extension.PasswordResetToken!
-            });
-
-            // clear token
-            extension.PasswordResetIdentity = null;
-            extension.PasswordResetTokenExpiration = null;
-            extension.PasswordResetToken = null;
-            await _identityDb.SaveChangesAsync();
-        }
-
-        if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(resetToken))
-        {
-            var result = await _userManager.ResetPasswordAsync(userId, resetToken, data.NewPassword);
-            if (!result.Succeeded) return FromIdentityError(result);
-
-            _ = Task.Run(() => _emailService.sendPasswordChangedEmail(email ?? "", firstName ?? ""));
 
             return Ok();
         }
 
-        return NotFound();
-    }
+        // POST api/Account/ResetFromToken
+        [HttpPost("ResetFromToken")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetFromToken([FromBody] ResetFromTokenData data)
+        {
+            if (User.Identity?.IsServiceUser() == true) return BadRequest();
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+            if (!string.Equals(data.NewPassword, data.ConfirmPassword)) return BadRequest("Passwords do not match");
 
+            string? userId = null;
+            string? resetToken = null;
+            string? firstName = null;
+            string? email = null;
+
+            // Look up extension by identity (and not expired)
+            var extension = _identityDb.AspNetUserExtensions
+                .FirstOrDefault(e => e.PasswordResetIdentity == data.Token &&
+                                     e.PasswordResetTokenExpiration != null &&
+                                     e.PasswordResetTokenExpiration > DateTime.UtcNow);
+
+            if (extension != null)
+            {
+                userId = extension.Id;
+
+                // gather email + name from App DB (profile)
+                var profile = await _appDb.UserProfiles.FindAsync(userId);
+                if (profile != null)
+                {
+                    firstName = profile.FirstName;
+                    email = profile.UserName;
+                }
+
+                // Back-compat: your token unwrapping
+                resetToken = TokenGenerator.ExtractToken(new Token
+                {
+                    Identity = extension.PasswordResetIdentity!,
+                    Value = extension.PasswordResetToken!
+                });
+
+                // clear token
+                extension.PasswordResetIdentity = null;
+                extension.PasswordResetTokenExpiration = null;
+                extension.PasswordResetToken = null;
+                await _identityDb.SaveChangesAsync();
+            }
+
+            if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(resetToken))
+            {
+                var result = await _userManager.ResetPasswordAsync(userId, resetToken, data.NewPassword);
+                if (!result.Succeeded) return FromIdentityError(result);
+
+                _ = Task.Run(() => _emailService.sendPasswordChangedEmail(email ?? "", firstName ?? ""));
+
+                return Ok();
+            }
+
+            return NotFound();
+        }
+     */
     // POST api/Account/ChangePassword
     [HttpPost("ChangePassword")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordBindingModel model)
     {
-        if (User.Identity?.IsServiceUser() == true) return BadRequest();
-        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+        if (User.Identity?.IsServiceUser() == true)
+        {
+            return BadRequest();
+        }
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        } 
 
-        var result = await _userManager.ChangePasswordAsync(model.UserID, model.OldPassword, model.NewPassword);
-        if (!result.Succeeded) return FromIdentityError(result);
+        var user = await _userManager.FindByIdAsync(model.UserID);
+        if (user == null)
+        {
+            return BadRequest("User not found");
+        }
+
+        var result = await _userManager.ChangePasswordAsync(user, model.OldPassword, model.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            //return FromIdentityError(result);
+            return BadRequest("result not found");
+        } 
+
+        Console.WriteLine($"Result: {result}");
 
         await ClearPasswordResetFlag(model.UserID);
         return Ok();
     }
 
-    // POST api/Account/SetPassword
-    [HttpPost("SetPassword")]
-    public async Task<IActionResult> SetPassword([FromBody] SetPasswordBindingModel model)
-    {
-        if (User.Identity?.IsServiceUser() == true) return BadRequest();
-        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+    /*
+                    // POST api/Account/SetPassword
+                    [HttpPost("SetPassword")]
+                    public async Task<IActionResult> SetPassword([FromBody] SetPasswordBindingModel model)
+                    {
+                        if (User.Identity?.IsServiceUser() == true) return BadRequest();
+                        if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null) return Unauthorized();
+                        var user = await _userManager.GetUserAsync(User);
+                        if (user == null) return Unauthorized();
 
-        var result = await _userManager.AddPasswordAsync(user, model.NewPassword);
-        if (!result.Succeeded) return FromIdentityError(result);
+                        var result = await _userManager.AddPasswordAsync(user, model.NewPassword);
+                        if (!result.Succeeded) return FromIdentityError(result);
 
-        return Ok();
-    }
+                        return Ok();
+                    }
 
-    // POST api/Account/AddExternalLogin
-    [HttpPost("AddExternalLogin")]
-    public async Task<IActionResult> AddExternalLogin([FromBody] AddExternalLoginBindingModel model)
-    {
-        if (User.Identity?.IsServiceUser() == true) return BadRequest();
-        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+                    // POST api/Account/AddExternalLogin
+                    [HttpPost("AddExternalLogin")]
+                    public async Task<IActionResult> AddExternalLogin([FromBody] AddExternalLoginBindingModel model)
+                    {
+                        if (User.Identity?.IsServiceUser() == true) return BadRequest();
+                        if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-        // In Core, exchange external access token step differs; if you still carry the same format, keep your unprotect logic
-        var ticket = HttpContext.AuthenticateAsync(model.ExternalAccessToken).Result; // TODO: adapt if you store tokens differently
-        if (ticket == null || !ticket.Succeeded || (ticket.Properties?.ExpiresUtc <= DateTimeOffset.UtcNow))
-            return BadRequest("External login failure.");
+                        // In Core, exchange external access token step differs; if you still carry the same format, keep your unprotect logic
+                        var ticket = HttpContext.AuthenticateAsync(model.ExternalAccessToken).Result; // TODO: adapt if you store tokens differently
+                        if (ticket == null || !ticket.Succeeded || (ticket.Properties?.ExpiresUtc <= DateTimeOffset.UtcNow))
+                            return BadRequest("External login failure.");
 
-        var externalData = ExternalLoginData.FromIdentity(ticket.Principal.Identity as ClaimsIdentity);
-        if (externalData == null) return BadRequest("The external login is already associated with an account.");
+                        var externalData = ExternalLoginData.FromIdentity(ticket.Principal.Identity as ClaimsIdentity);
+                        if (externalData == null) return BadRequest("The external login is already associated with an account.");
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null) return Unauthorized();
+                        var user = await _userManager.GetUserAsync(User);
+                        if (user == null) return Unauthorized();
 
-        var result = await _userManager.AddLoginAsync(user, new UserLoginInfo(externalData.LoginProvider, externalData.ProviderKey, externalData.LoginProvider));
-        if (!result.Succeeded) return FromIdentityError(result);
+                        var result = await _userManager.AddLoginAsync(user, new UserLoginInfo(externalData.LoginProvider, externalData.ProviderKey, externalData.LoginProvider));
+                        if (!result.Succeeded) return FromIdentityError(result);
 
-        return Ok();
-    }
+                        return Ok();
+                    }
 
-    // POST api/Account/RemoveLogin
-    [HttpPost("RemoveLogin")]
-    public async Task<IActionResult> RemoveLogin([FromBody] RemoveLoginBindingModel model)
-    {
-        if (User.Identity?.IsServiceUser() == true) return BadRequest();
-        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+                    // POST api/Account/RemoveLogin
+                    [HttpPost("RemoveLogin")]
+                    public async Task<IActionResult> RemoveLogin([FromBody] RemoveLoginBindingModel model)
+                    {
+                        if (User.Identity?.IsServiceUser() == true) return BadRequest();
+                        if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null) return Unauthorized();
+                        var user = await _userManager.GetUserAsync(User);
+                        if (user == null) return Unauthorized();
 
-        IdentityResult result;
-        if (model.LoginProvider == LocalLoginProvider)
-        {
-            result = await _userManager.RemovePasswordAsync(user);
-        }
-        else
-        {
-            result = await _userManager.RemoveLoginAsync(user, model.LoginProvider, model.ProviderKey);
-        }
+                        IdentityResult result;
+                        if (model.LoginProvider == LocalLoginProvider)
+                        {
+                            result = await _userManager.RemovePasswordAsync(user);
+                        }
+                        else
+                        {
+                            result = await _userManager.RemoveLoginAsync(user, model.LoginProvider, model.ProviderKey);
+                        }
 
-        if (!result.Succeeded) return FromIdentityError(result);
-        return Ok();
-    }
+                        if (!result.Succeeded) return FromIdentityError(result);
+                        return Ok();
+                    }
 
-    // GET api/Account/ExternalLogin?provider=...
-    [HttpGet("ExternalLogin")]
-    [AllowAnonymous]
-    public IActionResult ExternalLogin([FromQuery] string provider, [FromQuery] string? returnUrl = null, [FromQuery] string? error = null)
-    {
-        if (User.Identity?.IsServiceUser() == true) return BadRequest();
-        if (!string.IsNullOrEmpty(error)) return Redirect($"~/#error={Uri.EscapeDataString(error)}");
+                    // GET api/Account/ExternalLogin?provider=...
+                    [HttpGet("ExternalLogin")]
+                    [AllowAnonymous]
+                    public IActionResult ExternalLogin([FromQuery] string provider, [FromQuery] string? returnUrl = null, [FromQuery] string? error = null)
+                    {
+                        if (User.Identity?.IsServiceUser() == true) return BadRequest();
+                        if (!string.IsNullOrEmpty(error)) return Redirect($"~/#error={Uri.EscapeDataString(error)}");
 
-        var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Account", new { returnUrl });
-        var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
-        return Challenge(properties, provider);
-    }
+                        var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Account", new { returnUrl });
+                        var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+                        return Challenge(properties, provider);
+                    }
 
-    // GET api/Account/ExternalLoginCallback
-    [HttpGet("ExternalLoginCallback")]
-    [AllowAnonymous]
-    public async Task<IActionResult> ExternalLoginCallback([FromQuery] string? returnUrl = null)
-    {
-        if (User.Identity?.IsServiceUser() == true) return BadRequest();
+                    // GET api/Account/ExternalLoginCallback
+                    [HttpGet("ExternalLoginCallback")]
+                    [AllowAnonymous]
+                    public async Task<IActionResult> ExternalLoginCallback([FromQuery] string? returnUrl = null)
+                    {
+                        if (User.Identity?.IsServiceUser() == true) return BadRequest();
 
-        var info = await _signInManager.GetExternalLoginInfoAsync();
-        if (info == null) return Problem("External login info not found.");
+                        var info = await _signInManager.GetExternalLoginInfoAsync();
+                        if (info == null) return Problem("External login info not found.");
 
-        var signInResult = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
-        if (signInResult.Succeeded)
-        {
-            return Ok();
-        }
+                        var signInResult = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
+                        if (signInResult.Succeeded)
+                        {
+                            return Ok();
+                        }
 
-        // Not registered yet — create identity from external claims so UI can finish registration if needed
-        var claims = info.Principal.Claims;
-        var id = new ClaimsIdentity(claims, OAuthDefaults.DisplayName);
-        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(id));
-        return Ok();
-    }
+                        // Not registered yet — create identity from external claims so UI can finish registration if needed
+                        var claims = info.Principal.Claims;
+                        var id = new ClaimsIdentity(claims, OAuthDefaults.DisplayName);
+                        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(id));
+                        return Ok();
+                    }
 
-    // GET api/Account/ExternalLogins?returnUrl=%2F&generateState=true
-    [HttpGet("ExternalLogins")]
-    [AllowAnonymous]
-    public async Task<IEnumerable<ExternalLoginViewModel>> ExternalLogins([FromQuery] string returnUrl, [FromQuery] bool generateState = false)
-    {
-        if (User.Identity?.IsServiceUser() == true) return Enumerable.Empty<ExternalLoginViewModel>();
-        return await GetExternalLoginsInternal(returnUrl, generateState);
-    }
-    */
+                    // GET api/Account/ExternalLogins?returnUrl=%2F&generateState=true
+                    [HttpGet("ExternalLogins")]
+                    [AllowAnonymous]
+                    public async Task<IEnumerable<ExternalLoginViewModel>> ExternalLogins([FromQuery] string returnUrl, [FromQuery] bool generateState = false)
+                    {
+                        if (User.Identity?.IsServiceUser() == true) return Enumerable.Empty<ExternalLoginViewModel>();
+                        return await GetExternalLoginsInternal(returnUrl, generateState);
+                    }
+                    */
     // POST api/Account/Register
     [HttpPost("Register")]
     public async Task<ActionResult> RegisterSystemUser([FromBody] JsonElement data)
@@ -667,7 +689,7 @@ public class AccountController : ControllerBase
 
         return ValidationProblem(ModelState);
     }
-
+*/
     private async Task ClearPasswordResetFlag(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
@@ -677,6 +699,7 @@ public class AccountController : ControllerBase
             await _userManager.UpdateAsync(user);
         }
     }
+    /*
 
     private async Task<IEnumerable<ExternalLoginViewModel>> GetExternalLoginsInternal(string returnUrl, bool generateState)
     {
@@ -707,7 +730,7 @@ public class AccountController : ControllerBase
         }
         return logins;
     }
-
+ */
     // ---- Types ported from your code ----
 
     private class ExternalLoginData
@@ -754,5 +777,4 @@ public class AccountController : ControllerBase
                           .TrimEnd('=');
         }
     }
-    */
 }
