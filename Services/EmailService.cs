@@ -62,8 +62,6 @@ namespace NewVivaApi.Services
         public EmailParameters createEmail(EmailParameters ep, Document attachment = null)
         {
             Console.WriteLine("=== createEmail method started ===");
-            Console.WriteLine($"Email parameters: Recipients={ep.emails}, Subject={ep.subject}, CreatedBy={ep.createdByUser}, SystemCD={ep.SystemCD}");
-
             //Check Params to be valid
             if (ep.templateHTML == null || ep.parmList.Count < 1 || ep.emails == null || ep.subject == null || ep.fromEmail == null || ep.createdByUser == null)
             {
@@ -78,31 +76,24 @@ namespace NewVivaApi.Services
             Console.WriteLine("Email validation PASSED");
 
             ep.emailBodyHTML = ep.templateHTML;
-            Console.WriteLine($"Starting template parameter replacement with {ep.parmList.Count} parameters");
 
             foreach (KeyValuePair<string, string> p in ep.parmList)
             {
-                Console.WriteLine($"Replacing parameter {p.Key} with value: {p.Value}");
                 ep.emailBodyHTML = ep.emailBodyHTML.Replace(p.Key, p.Value);
             }
 
-            Console.WriteLine("Template parameter replacement completed");
-
             if (ep.isUnitTestTF)
             {
-                Console.WriteLine("Unit test mode - skipping actual email insertion");
                 ep.sentSuccessfulTF = true;
                 ep.resultMessage = "Email sent successfully.";
                 return ep;
             }
 
             int? refEmailMessageID = null;
-            Console.WriteLine("Starting database operations for email insertion");
 
             try
             {
                 var connectionString = _configuration.GetConnectionString("UtilityConnectionString");
-                Console.WriteLine($"Using connection string from configuration: UtilityConnectionString");
 
                 if (string.IsNullOrEmpty(connectionString))
                 {
@@ -110,10 +101,8 @@ namespace NewVivaApi.Services
                     throw new InvalidOperationException("UtilityConnectionString not found in configuration");
                 }
 
-                Console.WriteLine("Opening database connection...");
                 using var connection = new SqlConnection(connectionString);
                 connection.Open();
-                Console.WriteLine("Database connection opened successfully");
 
                 if (attachment == null)
                 {
@@ -124,8 +113,6 @@ namespace NewVivaApi.Services
                     {
                         CommandType = CommandType.StoredProcedure
                     };
-
-                    Console.WriteLine("Creating stored procedure parameters...");
 
                     var emailIdParam = new SqlParameter("@EmailMessageID", SqlDbType.Int)
                     {
@@ -151,18 +138,12 @@ namespace NewVivaApi.Services
                     command.Parameters.AddWithValue("@SentDT", DBNull.Value);
                     command.Parameters.AddWithValue("@ReplyTo", DBNull.Value);
 
-                    Console.WriteLine("🚀 Executing UE_EmailMessage_I stored procedure...");
                     var rowsAffected = command.ExecuteNonQuery();
-                    Console.WriteLine($"Stored procedure executed, rows affected: {rowsAffected}");
 
                     refEmailMessageID = emailIdParam.Value as int?;
-                    Console.WriteLine($"Email inserted successfully with ID: {refEmailMessageID}");
                 }
                 else
                 {
-                    Console.WriteLine("Processing email WITH attachment using UE_EmailMessageWithAttachment_I stored procedure");
-                    Console.WriteLine($"Attachment details: FileName={attachment.DownloadFileName}, Path={attachment.Path}, Bucket={attachment.Bucket}");
-
                     // Call UE_EmailMessageWithAttachment_I stored procedure
                     using var command = new SqlCommand("dbo.UE_EmailMessageWithAttachment_I", connection)
                     {
@@ -207,15 +188,10 @@ namespace NewVivaApi.Services
                     command.Parameters.AddWithValue("@HtmlToPDF_PostData", DBNull.Value);
                     command.Parameters.AddWithValue("@ReplyTo", DBNull.Value);
 
-                    Console.WriteLine("🚀 Executing UE_EmailMessageWithAttachment_I stored procedure...");
                     var result = command.ExecuteScalar();
-                    Console.WriteLine($"Stored procedure executed, result: {result}");
-
                     refEmailMessageID = emailIdParam.Value as int?;
                     Console.WriteLine($"Email with attachment inserted successfully with ID: {refEmailMessageID}");
                 }
-
-                Console.WriteLine("🔌 Closing database connection");
             }
             catch (SqlException sqlEx)
             {
@@ -333,20 +309,13 @@ namespace NewVivaApi.Services
         public async Task sendNewAdminEmail(string UserID, string TmpPassword)
         {
             Console.WriteLine($"=== STARTING sendNewAdminEmail ===");
-            Console.WriteLine($"Input Parameters - UserID: {UserID}");
-
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             if (userProfileRecord == null)
             {
                 Console.WriteLine($"ERROR: User profile not found for UserID: {UserID}");
                 return;
             }
-            else
-            {
-                Console.WriteLine($"Found user: {userProfileRecord.UserName} - {userProfileRecord.FirstName} {userProfileRecord.LastName}");
-            }
 
-            Console.WriteLine($"Getting admin email list...");
             string emailList = listOfAdminsToNotify();
             if (string.IsNullOrEmpty(emailList))
             {
@@ -355,20 +324,13 @@ namespace NewVivaApi.Services
             }
 
             string templateHTML = "NewAdminAdded";
-            Console.WriteLine($"Using email template: {templateHTML}");
 
             Dictionary<string, string> keyPairs = new Dictionary<string, string>();
             keyPairs.Add("{{UserName}}", userProfileRecord.UserName);
             keyPairs.Add("{{Password}}", TmpPassword);
 
-            Console.WriteLine($"Calling generateEmails...");
-            Console.WriteLine($"  Template: {templateHTML}");
-            Console.WriteLine($"  Recipients: {emailList}");
-            Console.WriteLine($"  From User: {userProfileRecord.UserName}");
-
             string result = generateEmails(templateHTML, keyPairs, emailList, "New Admin Added", userProfileRecord.UserName);
 
-            Console.WriteLine($"generateEmails result: {result}");
             Console.WriteLine($"=== COMPLETED sendNewAdminEmail ===");
         }
 
@@ -447,8 +409,6 @@ namespace NewVivaApi.Services
         public void sendAdminEmailNewSubcontractor(string UserID, int SubcontractorID)
         {
             Console.WriteLine($"=== STARTING sendAdminEmailNewSubcontractor ===");
-            Console.WriteLine($"Input Parameters - UserID: {UserID}, SubcontractorID: {SubcontractorID}");
-
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             if (userProfileRecord == null)
             {

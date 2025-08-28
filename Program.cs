@@ -81,6 +81,8 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<NewVivaApi.Services.AspNetUserService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<FinancialSecurityService>();
+
 
 
 // ----------------------

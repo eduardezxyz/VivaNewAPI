@@ -33,22 +33,23 @@ namespace NewVivaApi.Controllers.Odata
         private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly EmailService _emailService;
+        private readonly FinancialSecurityService _financialSecurityService;
 
         public GeneralContractorsController(
             AppDbContext context,
             IMapper mapper,
             EmailService emailService,
             IHttpContextAccessor httpContextAccessor,
-            Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager
+            Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager,
+            FinancialSecurityService financialSecurityService
             )
-
         {
             _context = context;
             _mapper = mapper;
             _emailService = emailService;
             _userManager = userManager;
             _httpContextAccessor = httpContextAccessor;
-
+            _financialSecurityService = financialSecurityService;
         }
 
         // [EnableQuery]
@@ -62,20 +63,7 @@ namespace NewVivaApi.Controllers.Odata
         public ActionResult Get()
         {
             var model = _context.GeneralContractorsVws
-                .OrderBy(g => g.GeneralContractorId)
-                .Select(g => new
-                {
-                    GeneralContractorID = g.GeneralContractorId,
-                    GeneralContractorName = g.GeneralContractorName,
-                    VivaGeneralContractorID = g.VivaGeneralContractorId,
-                    StatusID = g.StatusId,
-                    JsonAttributes = g.JsonAttributes,
-                    LogoImage = g.LogoImage,
-                    CreatedByUser = g.CreatedByUser,
-                    DommainName = g.DommainName,
-                    NumSubs = g.NumSubs,
-                    Outstanding = g.Outstanding
-                });
+                .OrderBy(g => g.GeneralContractorId);
 
             if (!model.Any())
                 return BadRequest("No records found.");
@@ -90,6 +78,9 @@ namespace NewVivaApi.Controllers.Odata
             if (model == null)
                 return NotFound();
 
+            //Decryption
+            model = _financialSecurityService.GenerateUnprotectedJsonAttributes(model);
+
             return Ok(model);
         }
 
@@ -99,16 +90,18 @@ namespace NewVivaApi.Controllers.Odata
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            //Encryption
+            string protectedJsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
+
             var dbEntity = _mapper.Map<GeneralContractor>(model);
 
-            //dbEntity.JsonAttributes = FinancialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
+            dbEntity.JsonAttributes = protectedJsonAttributes;
             dbEntity.CreateDt = System.DateTime.UtcNow;
             dbEntity.LastUpdateDt = System.DateTime.UtcNow;
-            dbEntity.LastUpdateUser = dbEntity.CreatedByUser = User?.Identity?.Name;
             dbEntity.LogoImage = model.LogoImage;
             dbEntity.DommainName = model.DommainName;
-            dbEntity.CreatedByUser = "deki@steeleconsult@gmail.com";
-            dbEntity.LastUpdateUser = "deki@steeleconsult@gmail.com";
+            dbEntity.CreatedByUser = User.Identity?.Name; ;
+            dbEntity.LastUpdateUser = User.Identity?.Name;
 
             _context.GeneralContractors.Add(dbEntity);
 
@@ -123,12 +116,14 @@ namespace NewVivaApi.Controllers.Odata
             }
 
             model.GeneralContractorId = dbEntity.GeneralContractorId;
-            var resultModel = _mapper.Map<GeneralContractor>(dbEntity);
+
+            //var resultModel = _mapper.Map<GeneralContractor>(dbEntity);
 
             //subdomain service
             //var subdomainService = new SubdomainService();
             //await subdomainService.AddNewSubdomainAsync(model.DomainName); Line was commented / not active in original code
 
+            //Email
             var userId = User.Identity.GetUserId();
             var genConId = model.GeneralContractorId;
             Console.WriteLine($"Before email services: userId = {userId},  GenConID = {genConId}");
@@ -139,24 +134,42 @@ namespace NewVivaApi.Controllers.Odata
             return Created(model);
         }
 
-        [HttpPatch]
-        public async Task<IActionResult> Patch(int key, [FromBody] GeneralContractorsVw patch)
+        [HttpPatch("{key}")]
+        public async Task<IActionResult> Patch(int key, [FromBody] Delta<GeneralContractorsVw> patch)
         {
-            var dbEntity = await _context.GeneralContractors.FindAsync(key);
 
-            if (dbEntity == null)
+            if (User.Identity?.IsServiceUser() == true)
+            {
+                return BadRequest();
+            }
+            var databaseModel = await _context.GeneralContractors
+                .FirstOrDefaultAsync(s => s.GeneralContractorId == key && s.DeleteDt == null);
+
+            if (databaseModel == null)
                 return NotFound();
 
-            _mapper.Map(patch, dbEntity);
-            dbEntity.GeneralContractorId = key;
+            var createdByUser = databaseModel.CreatedByUser;
+            var model = new GeneralContractorsVw();
 
-            //dbEntity.JsonAttributes = FinancialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
-            dbEntity.LastUpdateDt = System.DateTime.UtcNow;
-            dbEntity.LastUpdateUser = "deki@steeleconsult.com";
-            dbEntity.CreatedByUser = "deki@steeleconsult.com";
+            _mapper.Map(databaseModel, model);
+            patch.Patch(model);
+            _mapper.Map(model, databaseModel);
 
-            if (!TryValidateModel(dbEntity))
-                return BadRequest(ModelState);
+            // Encryption
+            string protectedJsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes ?? string.Empty);
+
+            var currentUser = User.Identity?.Name;
+            var currentTime = DateTime.UtcNow;
+
+            databaseModel.JsonAttributes = protectedJsonAttributes;
+            databaseModel.LastUpdateDt = currentTime;
+            databaseModel.LastUpdateUser = currentUser;
+            databaseModel.LogoImage = model.LogoImage;
+            databaseModel.DommainName = model.DommainName;
+            databaseModel.CreatedByUser = createdByUser;
+
+            // if (!TryValidateModel(dbEntity))
+            //     return BadRequest(ModelState);
 
             try
             {
@@ -168,12 +181,11 @@ namespace NewVivaApi.Controllers.Odata
                 return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
             }
 
+            var updatedModel = await _context.GeneralContractorsVws.FirstOrDefaultAsync(g => g.GeneralContractorId == key);
+            Console.WriteLine($"==========General Contractor PATCH: Updated model=============: {updatedModel}");
+            await RegisterNewGeneralContractor(updatedModel);
 
-            var refreshed = await _context.GeneralContractors.FindAsync(key);
-
-            //await _registrationService.RegisterNewGeneralContractorAsync(refreshed);
-
-            return Updated(refreshed);
+            return Ok(updatedModel);
         }
 
 
@@ -219,18 +231,24 @@ namespace NewVivaApi.Controllers.Odata
             JObject jsonAttributes = JObject.Parse(model.JsonAttributes);
             string userName = jsonAttributes["ContactEmail"].ToString();
 
+            Console.WriteLine($"==========General Contractor POST/PATCH: RegisterNewGeneralContractor model=============: {model}");
+
             ApplicationUser existingUser = await _userManager.FindByEmailAsync(userName);
             if (existingUser != null && existingUser.Id != null)
             {
                 //User Already exists, don't create them.
+                Console.WriteLine("already exists");
                 return;
             }
+
+            Console.WriteLine($"existing user exists: {existingUser}");
 
             string contactName = jsonAttributes["ContactName"].ToString();
             string[] names = contactName.Split(' ');
 
             string firstName = "First Name";
             string lastName = "Last Name";
+            string phoneNumber = "Phone Number";
 
             if (names.Length < 2)
             {
@@ -256,12 +274,12 @@ namespace NewVivaApi.Controllers.Odata
             string generatedPassword = PasswordGenerationService.GeneratePassword(requirements);
             Console.WriteLine($"Generated password for user: {userName}");
 
-            RegisterSystemUserModel newGeneralContractorUser = new RegisterSystemUserModel(_context, _userManager,_emailService, _httpContextAccessor)
+            RegisterSystemUserModel newGeneralContractorUser = new RegisterSystemUserModel(_context, _userManager, _emailService, _httpContextAccessor)
             {
                 UserName = userName,
                 FirstName = firstName,
                 LastName = lastName,
-                //PhoneNumber = phoneNumber,
+                PhoneNumber = phoneNumber,
                 Password = generatedPassword,
                 ConfirmPassword = generatedPassword,
                 CompanyID = model.GeneralContractorId,

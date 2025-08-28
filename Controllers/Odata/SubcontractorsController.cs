@@ -31,15 +31,15 @@ namespace NewVivaApi.Controllers.Odata
         private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly EmailService _emailService;
-
-        // private readonly IFinancialSecurityService _financialSecurityService;
+        private readonly FinancialSecurityService _financialSecurityService;
 
         public SubcontractorsController(
             AppDbContext context,
             IMapper mapper,
             EmailService emailService,
             IHttpContextAccessor httpContextAccessor,
-            Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager
+            Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager,
+            FinancialSecurityService financialSecurityService
             )
         {
             _context = context;
@@ -47,6 +47,7 @@ namespace NewVivaApi.Controllers.Odata
             _userManager = userManager;
             _emailService = emailService;
             _httpContextAccessor = httpContextAccessor;
+            _financialSecurityService = financialSecurityService;
         }
 
         /*
@@ -87,17 +88,8 @@ namespace NewVivaApi.Controllers.Odata
         [EnableQuery]
         public ActionResult Get()
         {
-            var model = _context.SubcontractorsVws  
-                .OrderBy(s => s.SubcontractorId)
-                .Select(s => new
-                {
-                    SubcontractorID = s.SubcontractorId,
-                    SubcontractorName = s.SubcontractorName,
-                    VivaSubcontractorID = s.VivaSubcontractorId,
-                    StatusID = s.StatusId,
-                    CreatedByUser = s.CreatedByUser,
-                    JsonAttributes = s.JsonAttributes
-                });
+            var model = _context.SubcontractorsVws
+                .OrderBy(s => s.SubcontractorId);
 
             if (model == null)
                 return BadRequest();
@@ -110,19 +102,11 @@ namespace NewVivaApi.Controllers.Odata
         {
             var model = _context.SubcontractorsVws
                 .Where(s => s.SubcontractorId == key)
-                .Select(s => new
-                {
-                    SubcontractorID = s.SubcontractorId,
-                    SubcontractorName = s.SubcontractorName,
-                    VivaSubcontractorID = s.VivaSubcontractorId,
-                    StatusID = s.StatusId,
-                    CreatedByUser = s.CreatedByUser,
-                    JsonAttributes = s.JsonAttributes
-                })
                 .FirstOrDefault(); 
             if (model == null)
                 return NotFound();
 
+            model.JsonAttributes = _financialSecurityService.GenerateUnprotectedJsonAttributes(model.JsonAttributes);
             return Ok(model);
         }
 
@@ -138,7 +122,7 @@ namespace NewVivaApi.Controllers.Odata
 
             var dbModel = _mapper.Map<Subcontractor>(model);
 
-            //dbModel.JsonAttributes = FinancialSecurityService.protectJsonAttributes(model.JsonAttributes);
+            dbModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
             dbModel.CreateDt = DateTime.UtcNow;
             dbModel.LastUpdateDt = DateTime.UtcNow;
             dbModel.LastUpdateUser = "deki@steeleconsult.com";
@@ -264,29 +248,37 @@ namespace NewVivaApi.Controllers.Odata
         }
 
         [HttpPatch]
-        public async Task<IActionResult> Patch(int key, [FromBody] SubcontractorsVw patch)
+        public async Task<IActionResult> Patch(int key, [FromBody] Delta<SubcontractorsVw> patch)
         {
-            // if (User.Identity.IsServiceUser())
-            //     return BadRequest();
+            if (User.Identity?.IsServiceUser() == true)
+            {
+                return BadRequest();
+            }
 
             var dbModel = await _context.Subcontractors.FindAsync(key);
+            var databaseModel = await _context.Subcontractors
+                .FirstOrDefaultAsync(s => s.SubcontractorId == key && s.DeleteDt == null);
+
             if (dbModel == null)
                 return NotFound();
 
-            _mapper.Map(patch, dbModel);
-            dbModel.SubcontractorId = key; //manually clear the ID to avoid issues with OData patching
+            var createdByUser = databaseModel.CreatedByUser;
+            var model = new SubcontractorsVw();
 
-            //dbModel.JsonAttributes = FinancialSecurityService.protectJsonAttributes(model.JsonAttributes);
-            dbModel.LastUpdateDt = DateTime.UtcNow;
-            dbModel.LastUpdateUser = "deki@steeleconsult.com"; //temp
+            _mapper.Map(databaseModel, model);
+            patch.Patch(model);
+            _mapper.Map(model, databaseModel);
 
-            // var validationErrors = dbModel.Validate();
-            // if (validationErrors.Any())
-            // {
-            //     foreach (var error in validationErrors)
-            //         ModelState.AddModelError(string.Empty, error);
-            //     return BadRequest(ModelState);
-            // }
+            // Encryption
+            string protectedJsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes ?? string.Empty);
+
+            var currentUser = User.Identity?.Name;
+            var currentTime = DateTime.UtcNow;
+
+            databaseModel.JsonAttributes = protectedJsonAttributes;
+            databaseModel.LastUpdateDt = currentTime;
+            databaseModel.LastUpdateUser = currentUser;
+            databaseModel.CreatedByUser = createdByUser;
 
             try
             {
