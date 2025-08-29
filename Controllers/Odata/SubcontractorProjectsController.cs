@@ -18,6 +18,7 @@ using System.Text.Json;
 using AutoMapper;
 using Microsoft.AspNet.Identity;
 using NewVivaApi.Services;
+using NewVivaApi.Extensions;
 
 namespace NewVivaApi.Controllers.Odata
 {
@@ -37,8 +38,6 @@ namespace NewVivaApi.Controllers.Odata
 
         private IQueryable<SubcontractorProjectsVw> GetSecureModel()
         {
-            // Temporarily return all SubcontractorProjects - we'll add auth logic later
-            /*
             if (User.Identity.IsServiceUser())
             {
                 return null;
@@ -52,15 +51,15 @@ namespace NewVivaApi.Controllers.Odata
             }
             else if (User.Identity.IsGeneralContractor())
             {
-                int? currentGeneralContractorId = User.Identity.GetGeneralContractorID();
-                model = _context.SubcontractorProjectsVws.Where(subcontractorProject =>
-                    subcontractorProject.GeneralContractorId == currentGeneralContractorId);
+                int? currentGeneralContractorId = User.Identity.GetGeneralContractorId();
+                model = _context.SubcontractorProjectsVws
+                    .Where(subcontractorProject => subcontractorProject.GeneralContractorId == currentGeneralContractorId);
             }
             else if (User.Identity.IsSubContractor())
             {
-                int? currentSubcontractorId = User.Identity.GetSubcontractorID();
-                model = _context.SubcontractorProjectsVws.Where(subcontractorProject =>
-                    subcontractorProject.SubcontractorId == currentSubcontractorId);
+                int? currentSubcontractorId = User.Identity.GetSubcontractorId();
+                model = _context.SubcontractorProjectsVws
+                    .Where(subcontractorProject => subcontractorProject.SubcontractorId == currentSubcontractorId);
             }
             else
             {
@@ -68,25 +67,17 @@ namespace NewVivaApi.Controllers.Odata
             }
 
             return model;
-            */
-
-            // For now, return all SubcontractorProjects
-            return _context.SubcontractorProjectsVws.OrderBy(sp => sp.ProjectName);
         }
 
         [EnableQuery]
         public ActionResult Get()
         {
-            // Temporarily comment out auth check
-            /*
             if (User.Identity.IsServiceUser())
             {
                 return null;
             }
-            */
 
-            var model = _context.SubcontractorProjectsVws
-                .OrderBy(sp => sp.SubcontractorProjectId);
+            var model = GetSecureModel();
 
             if (model == null)
                 return BadRequest();
@@ -97,15 +88,12 @@ namespace NewVivaApi.Controllers.Odata
         [EnableQuery]
         public ActionResult<SubcontractorProjectsVw> Get([FromRoute] int key)
         {
-            // Temporarily comment out auth check
-            /*
             if (User.Identity.IsServiceUser())
             {
                 return null;
             }
-            */
 
-            var model = _context.SubcontractorProjectsVws.FirstOrDefault(sp => sp.SubcontractorProjectId == key);
+            var model = GetSecureModel().FirstOrDefault(sp => sp.SubcontractorProjectId == key);
             if (model == null)
                 return NotFound();
 
@@ -115,13 +103,11 @@ namespace NewVivaApi.Controllers.Odata
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] SubcontractorProjectsVw model)
         {
-            //auth checks
-            /*
             if (User.Identity.IsServiceUser())
             {
                 return BadRequest();
             }
-
+/*
             if (!User.Identity.CanServiceAccountMakeSubcontractorProjectsRecord(model.SubcontractorId, model.ProjectId))
             {
                 return BadRequest();
@@ -166,8 +152,8 @@ namespace NewVivaApi.Controllers.Odata
 
             dbModel.CreateDt = DateTimeOffset.UtcNow;
             dbModel.LastUpdateDt = DateTimeOffset.UtcNow;
-            dbModel.LastUpdateUser = "testuser@steeleconsult.com";
-            dbModel.CreatedByUser = "testuser@steeleconsult.com";
+            dbModel.LastUpdateUser = User.Identity.Name;
+            dbModel.CreatedByUser = User.Identity.Name;
 
             _context.SubcontractorProjects.Add(dbModel);
 
@@ -256,7 +242,7 @@ namespace NewVivaApi.Controllers.Odata
 
             // Update audit fields
             dbModel.LastUpdateDt = DateTimeOffset.UtcNow;
-            dbModel.LastUpdateUser = "system@api.com";
+            dbModel.LastUpdateUser = User.Identity.Name;
             dbModel.CreatedByUser = createdByUser;
 
             Console.WriteLine($"Final DB Model: SubcontractorId={dbModel.SubcontractorId}, ProjectId={dbModel.ProjectId}, DiscountPct={dbModel.DiscountPct}, StatusId={dbModel.StatusId}");
@@ -269,7 +255,7 @@ namespace NewVivaApi.Controllers.Odata
             catch (DbUpdateException ex)
             {
                 var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-                Console.WriteLine($"Database error: {ex.Message}. Inner: {innerMessage}");
+                //Console.WriteLine($"Database error: {ex.Message}. Inner: {innerMessage}");
                 return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
             }
 

@@ -138,7 +138,7 @@ public class AccountController : ControllerBase
                 ExternalLoginProviders = externalLogins
             };
         }
-
+*/
         // GET api/Account/SendPasswordLink?Email=...&domain=...
         [HttpGet("SendPasswordLink")]
         [AllowAnonymous]
@@ -159,7 +159,7 @@ public class AccountController : ControllerBase
                 }
 
                 // Profile in App DB
-                var profile = await _appDb.UserProfiles.FindAsync(user.Id);
+                var profile = await _appDbcontext.UserProfiles.FindAsync(user.Id);
 
                 // Generate token using your existing generator to keep backward compat
                 var token = await TokenGenerator.GetToken(user.Id, _userManager);
@@ -175,7 +175,7 @@ public class AccountController : ControllerBase
 
             return Ok();
         }
-
+/*
         // POST api/Account/ResetFromToken
         [HttpPost("ResetFromToken")]
         [AllowAnonymous]

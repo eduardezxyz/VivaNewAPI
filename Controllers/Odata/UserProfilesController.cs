@@ -17,6 +17,8 @@ using System.Text.Json;
 using AutoMapper;
 using NewVivaApi.Authentication;
 using Microsoft.AspNetCore.Identity;
+using NewVivaApi.Extensions;
+using Microsoft.AspNet.Identity;
 
 namespace NewVivaApi.Controllers
 {
@@ -25,9 +27,9 @@ namespace NewVivaApi.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
 
-        public UserProfilesController(AppDbContext context, IMapper mapper, UserManager<ApplicationUser> userManager)
+        public UserProfilesController(AppDbContext context, IMapper mapper, Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _mapper = mapper;
@@ -36,8 +38,6 @@ namespace NewVivaApi.Controllers
 
         private IQueryable<UserProfilesVw> GetSecureModel()
         {
-            // Temporarily return all UserProfiles - we'll add auth logic later
-            /*
             if (User.Identity.IsServiceUser())
             {
                 return null;
@@ -51,12 +51,20 @@ namespace NewVivaApi.Controllers
             }
             else if (User.Identity.IsGeneralContractor())
             {
-                int generalContractorID = (int)User.Identity.GetGeneralContractorID();
+                int generalContractorID = (int)User.Identity.GetGeneralContractorId();
+
+                //List<int> subProjList = context.SubcontractorProjects_vw
+                //                            .Where(subProj => subProj.GeneralContractorID == generalContractorID)
+                //                            .Select(subproj => subproj.SubcontractorID).ToList();
+
+                //model = context.UserProfiles_vw.Where(prof => prof.GeneralContractorID == generalContractorID || 
+                //                                        (prof.SubcontractorID.HasValue && subProjList.Contains((int)prof.SubcontractorID)));
+
                 model = _context.UserProfilesVws.Where(prof => prof.GeneralContractorId == generalContractorID).OrderBy(usr => usr.FullName);
             }
             else if (User.Identity.IsSubContractor())
             {
-                int subContractorID = (int)User.Identity.GetSubcontractorID();
+                int subContractorID = (int)User.Identity.GetSubcontractorId();
                 model = _context.UserProfilesVws.Where(prof => prof.SubcontractorId == subContractorID).OrderBy(usr => usr.FullName);
             }
             else
@@ -66,23 +74,16 @@ namespace NewVivaApi.Controllers
             }
 
             return model;
-            */
-
-            // For now, return all UserProfiles
-            return _context.UserProfilesVws.OrderBy(up => up.FullName);
         }
 
         [EnableQuery]
         public ActionResult<IQueryable<UserProfilesVw>> Get()
         {
-            // Temporarily comment out auth check
-            /*
             if (User.Identity.IsServiceUser())
             {
                 return null;
             }
-            */
-            var model = _context.UserProfilesVws.OrderBy(u => u.UserId);
+            var model = GetSecureModel().OrderBy(u => u.UserId);
             if (model == null)
                 return BadRequest();
 
@@ -92,15 +93,12 @@ namespace NewVivaApi.Controllers
         [EnableQuery]
         public ActionResult<UserProfilesVw> Get(string key)
         {
-            // Temporarily comment out auth check
-            /*
             if (User.Identity.IsServiceUser())
             {
                 return null;
             }
-            */
 
-            var model = _context.UserProfilesVws.FirstOrDefault(u => u.UserId == key);
+            var model = GetSecureModel().FirstOrDefault(u => u.UserId == key);
             if (model == null)
                 return NotFound();
 
@@ -298,7 +296,7 @@ namespace NewVivaApi.Controllers
         private PatchDataModel ExtractPatchData(JsonElement data)
         {
             Console.WriteLine("Extracting patch data from JSON...");
-            
+
             return new PatchDataModel
             {
                 FirstName = GetJsonProperty(data, "FirstName"),

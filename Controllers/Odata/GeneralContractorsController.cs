@@ -25,7 +25,7 @@ using NewVivaApi.Services;
 
 namespace NewVivaApi.Controllers.Odata
 {
-    //[Authorize]
+    [Authorize]
     public class GeneralContractorsController : ODataController
     {
         private readonly AppDbContext _context;
@@ -52,20 +52,47 @@ namespace NewVivaApi.Controllers.Odata
             _financialSecurityService = financialSecurityService;
         }
 
-        // [EnableQuery]
-        // private ActionResult<IQueryable<GeneralContractorsVw>> GetSecureModel()
-        // {
-        //     // TODO
-        // }
+        [EnableQuery]
+        private IQueryable<GeneralContractorsVw> GetSecureModel()
+        {
+            if (User.Identity.IsServiceUser())
+            {
+                return null;
+            }
+
+            IQueryable<GeneralContractorsVw> model;
+
+            if (User.Identity.IsVivaUser() || User.Identity.IsSubContractor())
+            {
+                model = _context.GeneralContractorsVws.OrderBy(genCon => genCon.GeneralContractorName);
+            }
+            else if (User.Identity.IsGeneralContractor())
+            {
+                int generalContractorID = (int)User.Identity.GetGeneralContractorId();
+                model = _context.GeneralContractorsVws
+                    .Where(genCon => genCon.GeneralContractorId == generalContractorID)
+                    .OrderBy(genCon => genCon.GeneralContractorName);
+            }
+            else
+            {
+                model = null;
+            }
+
+            return model;
+        }
 
         [EnableQuery]
         [HttpGet]
         public ActionResult Get()
         {
-            var model = _context.GeneralContractorsVws
-                .OrderBy(g => g.GeneralContractorId);
+            if (User.Identity.IsServiceUser())
+            {
+                return BadRequest();
+            }
 
-            if (!model.Any())
+            var model = GetSecureModel();
+
+            if (model == null)
                 return BadRequest("No records found.");
 
             return Ok(model);
@@ -74,7 +101,11 @@ namespace NewVivaApi.Controllers.Odata
         [EnableQuery]
         public ActionResult<GeneralContractorsVw> Get([FromRoute] int key)
         {
-            var model = _context.GeneralContractorsVws.FirstOrDefault(g => g.GeneralContractorId == key);
+            if (User.Identity.IsServiceUser())
+            {
+                return BadRequest();
+            }
+            var model = GetSecureModel().FirstOrDefault(g => g.GeneralContractorId == key);
             if (model == null)
                 return NotFound();
 

@@ -16,6 +16,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 namespace VivaPayAppAPI.Controllers.OData;
 
+
+[Authorize]
 public class ProjectsController : ODataController
 {
     private readonly AppDbContext _context;
@@ -42,14 +44,14 @@ public class ProjectsController : ODataController
         }
         else if (User.Identity.IsGeneralContractor())
         {
-            int generalContractorID = (int)User.Identity.GetGeneralContractorID();
+            int generalContractorID = (int)User.Identity.GetGeneralContractorId();
             model = _context.ProjectsVws
                 .Where(project => project.GeneralContractorId == generalContractorID)
                 .OrderBy(proj => proj.ProjectName);
         }
         else if (User.Identity.IsSubContractor())
         {
-            int subContractorID = (int)User.Identity.GetSubcontractorID();
+            int subContractorID = (int)User.Identity.GetSubcontractorId();
 
             List<int> subProjList = _context.SubcontractorProjectsVws
                 .Where(subProj => subProj.SubcontractorId == subContractorID)
@@ -121,8 +123,7 @@ public class ProjectsController : ODataController
     [HttpPost]
     public async Task<ActionResult<ProjectsVw>> Post([FromBody] ProjectsVw model)
     {
-        Console.WriteLine($"POST model {model}");
-        Console.WriteLine($"Incoming GeneralContractorID: {model.GeneralContractorId}");
+        //Console.WriteLine($"Incoming GeneralContractorID: {model.GeneralContractorId}");
 
         if (User.Identity.IsServiceUser())
         {
@@ -182,7 +183,7 @@ public class ProjectsController : ODataController
 
     [HttpPatch]
     public async Task<ActionResult<ProjectsVw>> Patch(int key, [FromBody] ProjectsVw patch)
-    {   
+    {
         var permCheck = GetSecureModel().Any(s => s.ProjectId == key);
         if (!permCheck)
         {
@@ -210,13 +211,19 @@ public class ProjectsController : ODataController
     [HttpDelete]
     public async Task<ActionResult> Delete(int key)
     {
+        var permCheck = GetSecureModel().Any(s => s.ProjectId == key);
+        if (!permCheck)
+        {
+            return NotFound();
+        }
+
         var entity = await _context.Projects.FindAsync(key);
         if (entity == null)
         {
             return NotFound();
         }
 
-        _context.Projects.Remove(entity);
+        entity.DeleteDt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         return Ok();

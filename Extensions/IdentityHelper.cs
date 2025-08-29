@@ -7,7 +7,7 @@ namespace NewVivaApi.Extensions
 {
     public static class IdentityHelper
     {
-        public static int? GetSubcontractorID(this IIdentity identity)
+        public static int? GetSubcontractorId(this IIdentity identity)
         {
             var serviceProvider = GetServiceProvider();
             var context = serviceProvider.GetRequiredService<AppDbContext>();
@@ -21,7 +21,7 @@ namespace NewVivaApi.Extensions
             return subcontractorRecord?.SubcontractorId;
         }
 
-        public static int? GetGeneralContractorID(this IIdentity identity)
+        public static int? GetGeneralContractorId(this IIdentity identity)
         {
             var serviceProvider = GetServiceProvider();
             var context = serviceProvider.GetRequiredService<AppDbContext>();

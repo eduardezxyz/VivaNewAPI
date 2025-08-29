@@ -39,13 +39,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace NewVivaApi.Controllers.OData
 {
-    // [Authorize]
+    [Authorize]
     public class PayAppsController : ODataController
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
-        // private readonly IFinancialSecurityService _financialSecurityService;
-        // private readonly IPayAppPaymentService _payAppPaymentService;
+        private readonly FinancialSecurityService _financialSecurityService;
         private readonly EmailService _emailService;
         // private readonly IWebHookService _webHookService;
         private readonly PayAppPaymentService _payAppPaymentService;
@@ -57,13 +56,13 @@ namespace NewVivaApi.Controllers.OData
         public PayAppsController(AppDbContext context, ILogger<PayAppsController> logger,
         IdentityDbContext identityDbContext,
         EmailService emailService, IMapper mapper,
-        Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager
-        /*, IFinancialSecurityService financialSecurityService */)
+        Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager,
+        FinancialSecurityService financialSecurityService)
         {
             _context = context;
             _mapper = mapper;
             //_identityDbContext = identityDbContext;
-            // _financialSecurityService = financialSecurityService;
+            _financialSecurityService = financialSecurityService;
             _logger = logger;
             _emailService = emailService;
             _userManager = userManager;
@@ -71,30 +70,28 @@ namespace NewVivaApi.Controllers.OData
 
         private IQueryable<PayAppsVw> GetSecureModel()
         {
-            // Temporarily return all PayApps - we'll add auth logic later
-            /*
-            IQueryable<PayAppsVw> model;
-
             if (User.Identity.IsServiceUser())
             {
                 return null;
             }
 
+            IQueryable<PayAppsVw> model;
+
             if (User.Identity.IsVivaUser())
             {
-                model = _context.PayAppsVws;                              
+                model = _context.PayAppsVws;
             }
             else if (User.Identity.IsGeneralContractor())
             {
-                int? currentGeneralContractorId = User.Identity.GetGeneralContractorID();
-                model = _context.PayAppsVws.Where(payApp =>
-                    payApp.GeneralContractorId == currentGeneralContractorId);
+                int? currentGeneralContractorId = User.Identity.GetGeneralContractorId();
+                model = _context.PayAppsVws
+                    .Where(payApp => payApp.GeneralContractorId == currentGeneralContractorId);
             }
             else if (User.Identity.IsSubContractor())
             {
-                int? currentSubcontractorId = User.Identity.GetSubcontractorID();
-                model = _context.PayAppsVws.Where(payApp =>
-                    payApp.SubcontractorId == currentSubcontractorId);
+                int? currentSubcontractorId = User.Identity.GetSubcontractorId();
+                model = _context.PayAppsVws
+                    .Where(payApp => payApp.SubcontractorId == currentSubcontractorId);
             }
             else
             {
@@ -102,21 +99,20 @@ namespace NewVivaApi.Controllers.OData
             }
 
             return model;
-            */
-
-            // For now, return all PayApps
-            return _context.PayAppsVws;
         }
 
         [EnableQuery]
         [HttpGet]
         public ActionResult Get()
         {
-            var model = _context.PayAppsVws;
+            if (User.Identity.IsServiceUser())
+            {
+                return null;
+            }
+            var model = GetSecureModel();
 
             if (!model.Any())
                 return BadRequest("No records found.");
-
             return Ok(model);
         }
 
@@ -124,26 +120,22 @@ namespace NewVivaApi.Controllers.OData
         [EnableQuery]
         public ActionResult<PayAppsVw> Get([FromRoute] int key)
         {
-            //auth check
-            /*
             if (User.Identity.IsServiceUser())
             {
                 return null;
             }
-            */
 
-            var model = _context.PayAppsVws.FirstOrDefault(p => p.PayAppId == key);
+            var model = GetSecureModel().FirstOrDefault(p => p.PayAppId == key);
             if (model == null)
                 return NotFound();
 
+            model.JsonAttributes = _financialSecurityService.GenerateUnprotectedJsonAttributes(model.JsonAttributes);
             return Ok(model);
         }
 
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] JsonElement data)
         {
-            _logger.LogInformation("POST method called");
-            Console.WriteLine("POST method called");
             Console.WriteLine($"data: {data}");
             try
             {
@@ -207,7 +199,7 @@ namespace NewVivaApi.Controllers.OData
                 _mapper.Map(model, databaseModel);
                 Console.WriteLine($"Creating PayApp with SubcontractorProjectId: {databaseModel.SubcontractorProjectId}");
 
-                //databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
+                databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
                 databaseModel.CreateDt = DateTimeOffset.UtcNow;
                 databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
                 databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
@@ -309,6 +301,7 @@ namespace NewVivaApi.Controllers.OData
                 _mapper.Map(model, databaseModel);
 
                 // Preserve audit fields
+                databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
                 databaseModel.CreateDt = originalCreateDt;
                 databaseModel.CreatedByUser = createdByUser;
                 databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
@@ -351,13 +344,10 @@ namespace NewVivaApi.Controllers.OData
         {
             try
             {
-                // Auth check (when ready)
-                /*
                 if (User.Identity.IsServiceUser())
                 {
                     return BadRequest();
                 }
-                */
 
                 var model = await _context.PayApps
                     .FirstOrDefaultAsync(s => s.PayAppId == key && s.DeleteDt == null);

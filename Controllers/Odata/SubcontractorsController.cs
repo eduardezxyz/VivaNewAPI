@@ -23,7 +23,7 @@ using Microsoft.AspNet.Identity;
 
 namespace NewVivaApi.Controllers.Odata
 {
-    //[Authorize]
+    [Authorize]
     public class SubcontractorsController : ODataController
     {
         private readonly AppDbContext _context;
@@ -49,47 +49,64 @@ namespace NewVivaApi.Controllers.Odata
             _httpContextAccessor = httpContextAccessor;
             _financialSecurityService = financialSecurityService;
         }
-
-        /*
         private IQueryable<SubcontractorsVw> GetSecureModel()
         {
-            var identity = User.Identity;
-
-            if (identity.IsServiceUser())
+            if (User.Identity.IsServiceUser())
+            {
                 return null;
-
-            if (identity.IsVivaUser())
-            {
-                return _context.Subcontractors_vw.OrderBy(x => x.SubcontractorName);
             }
 
-            if (identity.IsGeneralContractor())
-            {
-                int contractorId = identity.GetGeneralContractorID();
-                var subcontractorIds = _context.SubcontractorProjects_vw
-                    .Where(x => x.GeneralContractorID == contractorId)
-                    .Select(x => x.SubcontractorID).ToList();
+            IQueryable<SubcontractorsVw> model;
 
-                return _context.Subcontractors_vw
-                    .Where(x => subcontractorIds.Contains(x.SubcontractorID ?? 0))
-                    .OrderBy(x => x.SubcontractorName);
+            if (User.Identity.IsVivaUser())
+            {
+                Console.WriteLine("This is VivaUser");
+                model = _context.SubcontractorsVws.OrderBy(subcon => subcon.SubcontractorName);
+            }
+            else if (User.Identity.IsGeneralContractor())
+            {
+                int generalContractorId = (int)User.Identity.GetGeneralContractorId();
+                Console.WriteLine($"GetSecureModel() - GeneralContractor : {generalContractorId}");
+
+                List<int> subProjList = _context.SubcontractorProjectsVws
+                                            .Where(subProj => subProj.GeneralContractorId == generalContractorId)
+                                            .Select(subproj => subproj.SubcontractorId)
+                                            .ToList();
+
+                Console.WriteLine($"GetSecureModel() - subProjList count: {subProjList.Count}");
+                Console.WriteLine($"GetSecureModel() - subProjList values: [{string.Join(", ", subProjList)}]");
+
+                model = _context.SubcontractorsVws
+                    .Where(subCon => subProjList.Contains((int)subCon.SubcontractorId))
+                    .OrderBy(subcon => subcon.SubcontractorName);
+
+                Console.WriteLine($"GetSecureModel() - model {model}");
+            }
+            else if (User.Identity.IsSubContractor())
+            {
+                int subContractorId = (int)User.Identity.GetSubcontractorId();
+                Console.WriteLine($"GetSecureModel() - Subcontractor : {subContractorId}");
+
+                model = _context.SubcontractorsVws.Where(subCon => subCon.SubcontractorId == subContractorId);
+            }
+            else
+            {
+                Console.WriteLine($"GetSecureModel() - model is null");
+                model = null;
             }
 
-            if (identity.IsSubContractor())
-            {
-                int subContractorID = identity.GetSubcontractorID();
-                return _context.Subcontractors_vw.Where(x => x.SubcontractorID == subContractorID);
-            }
-
-            return null;
+            return model;
         }
-        */
 
         [EnableQuery]
         public ActionResult Get()
         {
-            var model = _context.SubcontractorsVws
-                .OrderBy(s => s.SubcontractorId);
+            if (User.Identity.IsServiceUser())
+            {
+                return BadRequest();
+            }
+
+            var model = GetSecureModel();
 
             if (model == null)
                 return BadRequest();
@@ -100,9 +117,14 @@ namespace NewVivaApi.Controllers.Odata
         [EnableQuery]
         public ActionResult<SubcontractorsVw> Get([FromRoute] int key)
         {
-            var model = _context.SubcontractorsVws
+            if (User.Identity.IsServiceUser())
+            {
+                return BadRequest();
+            }
+
+            var model = GetSecureModel()
                 .Where(s => s.SubcontractorId == key)
-                .FirstOrDefault(); 
+                .FirstOrDefault();
             if (model == null)
                 return NotFound();
 
@@ -125,8 +147,8 @@ namespace NewVivaApi.Controllers.Odata
             dbModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
             dbModel.CreateDt = DateTime.UtcNow;
             dbModel.LastUpdateDt = DateTime.UtcNow;
-            dbModel.LastUpdateUser = "deki@steeleconsult.com";
-            dbModel.CreatedByUser = "deki@steeleconsult.com";
+            dbModel.LastUpdateUser = User.Identity.Name;
+            dbModel.CreatedByUser = User.Identity.Name;
 
             _context.Subcontractors.Add(dbModel);
 
