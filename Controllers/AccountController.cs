@@ -175,7 +175,7 @@ public class AccountController : ControllerBase
 
             return Ok();
         }
-/*
+
         // POST api/Account/ResetFromToken
         [HttpPost("ResetFromToken")]
         [AllowAnonymous]
@@ -201,7 +201,7 @@ public class AccountController : ControllerBase
                 userId = extension.Id;
 
                 // gather email + name from App DB (profile)
-                var profile = await _appDb.UserProfiles.FindAsync(userId);
+                var profile = await _appDbcontext.UserProfiles.FindAsync(userId);
                 if (profile != null)
                 {
                     firstName = profile.FirstName;
@@ -221,20 +221,27 @@ public class AccountController : ControllerBase
                 extension.PasswordResetToken = null;
                 await _identityDb.SaveChangesAsync();
             }
+            
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return BadRequest("User not found");
+            }
 
             if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(resetToken))
-            {
-                var result = await _userManager.ResetPasswordAsync(userId, resetToken, data.NewPassword);
-                if (!result.Succeeded) return FromIdentityError(result);
+        {
+            var result = await _userManager.ResetPasswordAsync(user, resetToken, data.NewPassword);
+            // if (!result.Succeeded)
+            //     return FromIdentityError(result);
 
-                _ = Task.Run(() => _emailService.sendPasswordChangedEmail(email ?? "", firstName ?? ""));
+            _ = Task.Run(() => _emailService.sendPasswordChangedEmail(email ?? "", firstName ?? ""));
 
-                return Ok();
-            }
+            return Ok();
+        }
 
             return NotFound();
         }
-     */
+
     // POST api/Account/ChangePassword
     [HttpPost("ChangePassword")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordBindingModel model)

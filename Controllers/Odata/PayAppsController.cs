@@ -136,6 +136,32 @@ namespace NewVivaApi.Controllers.OData
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] JsonElement data)
         {
+
+            // Add some debugging
+            var userName = User.Identity?.Name ?? "Unknown";
+            Console.WriteLine($"Setting LastUpdateUser to: {userName}");
+
+            // Replace the failing SqlQueryRaw code with this:
+            var userExists = await _context.UserProfilesVws
+                .Where(u => u.UserName == userName)
+                .AnyAsync();
+
+            Console.WriteLine($"User {userName} exists in UserProfiles_vw: {userExists}");
+            if (User.Identity.IsServiceUser())
+            {
+                return BadRequest();
+            }
+
+            // if (!User.Identity.CanServiceAccountMakePayAppsRecord(model.SubcontractorProjectID))
+            // {
+            //     return BadRequest();
+            // }
+
+            // if (!ModelState.IsValid)
+            // {
+            //     return BadRequest(ModelState);
+            // }
+
             Console.WriteLine($"data: {data}");
             try
             {
@@ -166,16 +192,6 @@ namespace NewVivaApi.Controllers.OData
                         model.PayAppId, model.SubcontractorProjectId, model.StatusId, model.RequestedAmount);
                 }
 
-                //auth checks
-                // if (User.Identity.IsServiceUser())
-                // {
-                //     return BadRequest();
-                // }
-                // if (!User.Identity.CanServiceAccountMakePayAppsRecord(model.SubcontractorProjectId))
-                // {
-                //     return BadRequest();
-                // }
-
                 if (model == null)
                 {
                     return BadRequest("PayApp model is required");
@@ -204,6 +220,8 @@ namespace NewVivaApi.Controllers.OData
                 databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
                 databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
                 databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
+
+                Console.WriteLine($"databaseModel.LastUpdateUser: {databaseModel.LastUpdateUser}");
 
                 Console.WriteLine("about to add database model to context");
                 _context.PayApps.Add(databaseModel);

@@ -105,20 +105,20 @@ public class ProjectsController : ODataController
         return Ok(model);
     }
 
-    [HttpGet("getBySubcontractorID")]
-    public async Task<IActionResult> GetBySubcontractorID(int subcontractorID)
-    {
-        try
-        {
-            // Your logic to get projects by subcontractor ID
-            var projects = _context.SubcontractorProjectsVws.Where(p => p.SubcontractorId == subcontractorID);
-            return Ok(projects);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
-    }
+    // [HttpGet("getBySubcontractorID")]
+    // public async Task<IActionResult> GetBySubcontractorID(int subcontractorID)
+    // {
+    //     try
+    //     {
+    //         // Your logic to get projects by subcontractor ID
+    //         var projects = _context.SubcontractorProjectsVws.Where(p => p.SubcontractorId == subcontractorID);
+    //         return Ok(projects);
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         return StatusCode(500, $"Internal server error: {ex.Message}");
+    //     }
+    // }
 
     [HttpPost]
     public async Task<ActionResult<ProjectsVw>> Post([FromBody] ProjectsVw model)

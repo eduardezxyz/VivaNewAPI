@@ -12,72 +12,79 @@ using System.Linq;
 using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
+using NewVivaApi.Extensions;
 
 namespace NewVivaApi.Controllers.OData
 {
-    //[Authorize]
+    [Authorize]
     public class PayAppPaymentsController : ODataController
     {
         private readonly AppDbContext _context;
         //private readonly ODataValidationSettings _validationSettings = new ODataValidationSettings();
         private readonly IMapper _mapper;
         private readonly ILogger<PayAppPaymentsController> _logger;
-        //private readonly FinancialSecurityService _financialSecurityService;
+        private readonly FinancialSecurityService _financialSecurityService;
 
         public PayAppPaymentsController(
-            AppDbContext context, 
-            IMapper mapper, 
-            ILogger<PayAppPaymentsController> logger)
-            //FinancialSecurityService financialSecurityService)
+            AppDbContext context,
+            IMapper mapper,
+            ILogger<PayAppPaymentsController> logger,
+            FinancialSecurityService financialSecurityService)
         {
             _context = context;
             _mapper = mapper;
             _logger = logger;
-            //_financialSecurityService = financialSecurityService;
+            _financialSecurityService = financialSecurityService;
         }
 
         private IQueryable<PayAppPaymentsVw> GetSecureModel()
         {
-            /*
-            if (User.Identity?.IsServiceUser() == true)
+            IQueryable<PayAppPaymentsVw> model;
+
+            if (User.Identity.IsServiceUser())
             {
-                return Enumerable.Empty<PayAppPaymentsVw>().AsQueryable();
+                return null;
             }
 
-            if (User.Identity?.IsVivaUser() == true)
+            if (User.Identity.IsVivaUser())
             {
-                return _context.PayAppPaymentsVw;
+                model = _context.PayAppPaymentsVws;
             }
-            else if (User.Identity?.IsGeneralContractor() == true)
+            else if (User.Identity.IsGeneralContractor())
             {
-                var currentGeneralContractorId = User.Identity.GetGeneralContractorID();
-                return from payApp in _context.PayAppsVw
-                       join generalContractorPayments in _context.PayAppPaymentsVw on payApp.PayAppId equals generalContractorPayments.PayAppId
-                       where payApp.GeneralContractorId == currentGeneralContractorId
-                       select generalContractorPayments;
+                int? currentGeneralContractorId = User.Identity.GetGeneralContractorId();
+                model =
+                    from payApp in _context.PayAppsVws
+                    join generalContractorPayments in _context.PayAppPaymentsVws on payApp.PayAppId equals generalContractorPayments.PayAppId
+                    where payApp.GeneralContractorId == currentGeneralContractorId
+                    select generalContractorPayments;
             }
-            else if (User.Identity?.IsSubContractor() == true)
+            else if (User.Identity.IsSubContractor())
             {
-                var currentSubcontractorId = User.Identity.GetSubcontractorID();
-                return from payApp in _context.PayAppsVw
-                       join subcontractorPayments in _context.PayAppPaymentsVw on payApp.PayAppId equals subcontractorPayments.PayAppId
-                       where payApp.SubcontractorId == currentSubcontractorId
-                       select subcontractorPayments;
+                int? currentSubcontractorId = User.Identity.GetSubcontractorId();
+                model =
+                    from payApp in _context.PayAppsVws
+                    join subcontractorPayments in _context.PayAppPaymentsVws on payApp.PayAppId equals subcontractorPayments.PayAppId
+                    where payApp.SubcontractorId == currentSubcontractorId
+                    select subcontractorPayments;
             }
-            */
+            else
+            {
+                model = null;
+            }
 
-            return Enumerable.Empty<PayAppPaymentsVw>().AsQueryable();
+            return model;
         }
 
         [EnableQuery]
         public ActionResult<IQueryable<PayAppPaymentsVw>> Get()
         {
-            // if (User.Identity?.IsServiceUser() == true)
-            // {
-            //     return BadRequest();
-            // }
+            if (User.Identity?.IsServiceUser() == true)
+            {
+                return BadRequest();
+            }
 
-            var model = _context.PayAppPaymentsVws.OrderBy(p => p.PaymentId);
+            var model = GetSecureModel().OrderBy(p => p.PaymentId);
             if (model == null)
                 return BadRequest();
 
@@ -87,30 +94,25 @@ namespace NewVivaApi.Controllers.OData
         [EnableQuery]
         public ActionResult<PayAppPaymentsVw> Get([FromRoute] int key)
         {
-            // if (User.Identity?.IsServiceUser() == true)
-            // {
-            //     return BadRequest();
-            // }
+            if (User.Identity?.IsServiceUser() == true)
+            {
+                return BadRequest();
+            }
 
-            // var model = GetSecureModel().FirstOrDefault(pap => pap.PaymentId == key);
-            // if (model == null)
-            // {
-            //     return NotFound();
-            // }
-
-            var model = _context.PayAppPaymentsVws.FirstOrDefault(p => p.PaymentId == key);
+            var model = GetSecureModel().FirstOrDefault(pap => pap.PaymentId == key);
             if (model == null)
+            {
                 return NotFound();
-
+            }
             return Ok(model);
         }
 
         public async Task<IActionResult> Post([FromBody] PayAppPaymentsVw model)
         {
-            // if (User.Identity?.IsServiceUser() == true)
-            // {
-            //     return BadRequest("Service users cannot create PayAppPayments");
-            // }
+            if (User.Identity.IsServiceUser())
+            {
+                return BadRequest();
+            }
 
             // if (!User.Identity.CanServiceAccountMakePayAppPaymentsRecord(model.PayAppId))
             // {
@@ -125,7 +127,7 @@ namespace NewVivaApi.Controllers.OData
             var databaseModel = new PayAppPayment();
             _mapper.Map(model, databaseModel);
 
-            //databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(databaseModel.JsonAttributes);
+            databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(databaseModel.JsonAttributes);
             databaseModel.CreateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
@@ -137,7 +139,7 @@ namespace NewVivaApi.Controllers.OData
             // }
 
             _context.PayAppPayments.Add(databaseModel);
-            
+
             try
             {
                 await _context.SaveChangesAsync();
@@ -167,7 +169,7 @@ namespace NewVivaApi.Controllers.OData
             }
 
             var resultModel = _mapper.Map<PayAppPaymentsVw>(model);
-            return Created($"PayAppPayments({model.PayAppId})", resultModel);
+            return Created(resultModel);
         }
 
         public async Task<IActionResult> Patch(int key, [FromBody] PayAppPaymentsVw patch)
@@ -175,21 +177,20 @@ namespace NewVivaApi.Controllers.OData
             if (patch == null)
                 return BadRequest("No patch data provided");
 
-            // if (User.Identity?.IsServiceUser() == true)
-            // {
-            //     return BadRequest();
-            // }
+            if (User.Identity?.IsServiceUser() == true)
+            {
+                return BadRequest();
+            }
 
             var databaseModel = await _context.PayAppPayments.FirstOrDefaultAsync(pap => pap.PaymentId == key && pap.DeleteDt == null);
-            
+            var createdByUser = databaseModel.CreatedByUser;
+
             if (databaseModel == null)
                 return NotFound();
 
             var originalPaymentId = databaseModel.PaymentId;
             var originalPayAppId = databaseModel.PayAppId;
             var originalCreateDt = databaseModel.CreateDt;
-            var createdByUser = databaseModel.CreatedByUser;
-
             _mapper.Map(patch, databaseModel);
 
             // var model = new PayAppPaymentsVw();
@@ -198,7 +199,7 @@ namespace NewVivaApi.Controllers.OData
             // patch.PayAppId = model.PayAppId; // Ensure PayAppId is preserved
             // _mapper.Map(model, databaseModel);
 
-            //databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
+            databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(databaseModel.JsonAttributes);
             databaseModel.PaymentId = originalPaymentId;
             databaseModel.PayAppId = originalPayAppId;
             databaseModel.CreateDt = originalCreateDt;
@@ -228,7 +229,7 @@ namespace NewVivaApi.Controllers.OData
             {
                 var httpContextAccessor = HttpContext.RequestServices.GetService<IHttpContextAccessor>();
                 var payAppPaymentService = new PayAppPaymentService(databaseModel.PayAppId, httpContextAccessor);
-                
+
                 await payAppPaymentService.ReconcileTotalDollarAmount();
                 _logger.LogInformation("Payment reconciliation completed for PayApp {PayAppId} after update", databaseModel.PayAppId);
             }
@@ -249,12 +250,12 @@ namespace NewVivaApi.Controllers.OData
             // }
 
             var model = await _context.PayAppPayments.FirstOrDefaultAsync(pap => pap.PaymentId == key && pap.DeleteDt == null);
-            
+
             if (model == null)
                 return NotFound();
 
             model.DeleteDt = DateTimeOffset.UtcNow;
-            
+
             try
             {
                 await _context.SaveChangesAsync();
@@ -270,7 +271,7 @@ namespace NewVivaApi.Controllers.OData
             {
                 var httpContextAccessor = HttpContext.RequestServices.GetService<IHttpContextAccessor>();
                 var payAppPaymentService = new PayAppPaymentService(model.PayAppId, httpContextAccessor);
-                
+
                 await payAppPaymentService.ReconcileTotalDollarAmount();
 
                 Console.WriteLine($"Reconciliation completed for PayApp ID {model.PayAppId}");
