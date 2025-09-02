@@ -16,6 +16,7 @@ using NewVivaApi.Data;
 using NewVivaApi.Models;
 using System.Text.Json;
 using AutoMapper;
+using NewVivaApi.Extensions;
 
 namespace NewVivaApi.Controllers.OData
 {
@@ -32,26 +33,22 @@ namespace NewVivaApi.Controllers.OData
             _mapper = mapper;
         }
 
-        // private IQueryable<DocumentsVw> GetSecureModel()
-        // {
-        //     return _context.DocumentsVw
-        //         .Where(d => d.DeleteDt == null)
-        //         .OrderBy(s => s.FileName);
-        // }
+        private IQueryable<DocumentsVw> GetSecureModel()
+        {
+            IQueryable<DocumentsVw> model;
+            model = _context.DocumentsVws.Where(d => d.DeleteDt == null).OrderBy(s => s.FileName);
+            return model;
+        }
 
         [EnableQuery]
         public ActionResult<IQueryable<DocumentsVw>> Get()
         {
-            // if (User.Identity?.IsServiceUser() == true)
-            // {
-            //     return BadRequest();
-            // }
-
-            var model = _context.DocumentsVws.OrderBy(d => d.DocumentId);
-            if (model == null)
+            if (User.Identity.IsServiceUser() == true)
+            {
                 return BadRequest();
+            }
 
-            return Ok(model);
+            return Ok(GetSecureModel());
         }
 
         [EnableQuery]
@@ -91,14 +88,12 @@ namespace NewVivaApi.Controllers.OData
 
         public async Task<IActionResult> Delete([FromRoute] int key)
         {
-            // if (User.Identity?.IsServiceUser() == true)
-            // {
-            //     return BadRequest();
-            // }
+            if (User.Identity?.IsServiceUser() == true)
+            {
+                return BadRequest();
+            }
 
-            var model = await _context.Documents
-                .FirstOrDefaultAsync(s => s.DocumentId == key && s.DeleteDt == null);
-            
+            var model = await _context.Documents.FirstOrDefaultAsync(s => s.DocumentId == key && s.DeleteDt == null);
             if (model == null)
                 return NotFound();
 

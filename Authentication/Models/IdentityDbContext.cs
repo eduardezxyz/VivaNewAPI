@@ -24,8 +24,6 @@ public class IdentityDbContext : IdentityDbContext<ApplicationUser, Role, string
 
     //public virtual DbSet<AspNetUserClaim> AspNetUserClaims { get; set; }
 
-    // virtual DbSet<AspNetUserExtension> AspNetUserExtensions { get; set; }
-
     //public virtual DbSet<AspNetUserLogin> AspNetUserLogins { get; set; }
 
     public IdentityDbContext(

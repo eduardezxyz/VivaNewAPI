@@ -139,108 +139,106 @@ public class AccountController : ControllerBase
             };
         }
 */
-        // GET api/Account/SendPasswordLink?Email=...&domain=...
-        [HttpGet("SendPasswordLink")]
-        [AllowAnonymous]
-        public async Task<IActionResult> SendPasswordLink([FromQuery] string Email, [FromQuery] string domain)
+    // GET api/Account/SendPasswordLink?Email=...&domain=...
+    [HttpGet("SendPasswordLink")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SendPasswordLink([FromQuery] string Email, [FromQuery] string domain)
+    {
+        if (User.Identity?.IsServiceUser() == true) return BadRequest();
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        var user = await _userManager.FindByEmailAsync(Email);
+        if (user != null)
         {
-            if (User.Identity?.IsServiceUser() == true) return BadRequest();
-            if (!ModelState.IsValid) return ValidationProblem(ModelState);
-
-            var user = await _userManager.FindByEmailAsync(Email);
-            if (user != null)
+            // Extension row in Identity DB
+            var extension = await _identityDb.AspNetUserExtensions.FindAsync(user.Id);
+            if (extension == null)
             {
-                // Extension row in Identity DB
-                var extension = await _identityDb.AspNetUserExtensions.FindAsync(user.Id);
-                if (extension == null)
-                {
-                    extension = new AspNetUserExtension { Id = user.Id };
-                    _identityDb.AspNetUserExtensions.Add(extension);
-                }
-
-                // Profile in App DB
-                var profile = await _appDbcontext.UserProfiles.FindAsync(user.Id);
-
-                // Generate token using your existing generator to keep backward compat
-                var token = await TokenGenerator.GetToken(user.Id, _userManager);
-                extension.PasswordResetIdentity = token.Identity;
-                extension.PasswordResetToken = token.Value;
-                extension.PasswordResetTokenExpiration = token.Expiration;
-
-                await _identityDb.SaveChangesAsync();
-
-                var firstName = profile?.FirstName ?? user.FirstName ?? "";
-                _emailService.sendPasswordResetLinkEmail(Email, firstName, user.UserName, extension.PasswordResetIdentity!, domain);
+                extension = new AspNetUserExtension { Id = user.Id };
+                _identityDb.AspNetUserExtensions.Add(extension);
             }
 
-            return Ok();
+            // Profile in App DB
+            var profile = await _appDbcontext.UserProfiles.FindAsync(user.Id);
+
+            // Generate token using your existing generator to keep backward compat
+            var token = await TokenGenerator.GetToken(user.Id, _userManager);
+            extension.PasswordResetIdentity = token.Identity;
+            extension.PasswordResetToken = token.Value;
+            extension.PasswordResetTokenExpiration = token.Expiration;
+
+            await _identityDb.SaveChangesAsync();
+
+            var firstName = profile?.FirstName ?? user.FirstName ?? "";
+            _emailService.sendPasswordResetLinkEmail(Email, firstName, user.UserName, extension.PasswordResetIdentity!, domain);
         }
 
-        // POST api/Account/ResetFromToken
-        [HttpPost("ResetFromToken")]
-        [AllowAnonymous]
-        public async Task<IActionResult> ResetFromToken([FromBody] ResetFromTokenData data)
+        return Ok();
+    }
+
+    // POST api/Account/ResetFromToken
+    [HttpPost("ResetFromToken")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetFromToken([FromBody] ResetFromTokenData data)
+    {
+        if (User.Identity?.IsServiceUser() == true) return BadRequest();
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+        if (!string.Equals(data.NewPassword, data.ConfirmPassword)) return BadRequest("Passwords do not match");
+
+        // Look up extension by identity (and not expired)
+        var extension = _identityDb.AspNetUserExtensions
+            .FirstOrDefault(e => e.PasswordResetIdentity == data.Token &&
+                                 e.PasswordResetTokenExpiration != null &&
+                                 e.PasswordResetTokenExpiration > DateTime.UtcNow);
+
+        if (extension == null)
         {
-            if (User.Identity?.IsServiceUser() == true) return BadRequest();
-            if (!ModelState.IsValid) return ValidationProblem(ModelState);
-            if (!string.Equals(data.NewPassword, data.ConfirmPassword)) return BadRequest("Passwords do not match");
+            return BadRequest("Invalid or expired token");
+        }
 
-            string? userId = null;
-            string? resetToken = null;
-            string? firstName = null;
-            string? email = null;
+        var userId = extension.Id;
 
-            // Look up extension by identity (and not expired)
-            var extension = _identityDb.AspNetUserExtensions
-                .FirstOrDefault(e => e.PasswordResetIdentity == data.Token &&
-                                     e.PasswordResetTokenExpiration != null &&
-                                     e.PasswordResetTokenExpiration > DateTime.UtcNow);
-
-            if (extension != null)
-            {
-                userId = extension.Id;
-
-                // gather email + name from App DB (profile)
-                var profile = await _appDbcontext.UserProfiles.FindAsync(userId);
-                if (profile != null)
-                {
-                    firstName = profile.FirstName;
-                    email = profile.UserName;
-                }
-
-                // Back-compat: your token unwrapping
-                resetToken = TokenGenerator.ExtractToken(new Token
-                {
-                    Identity = extension.PasswordResetIdentity!,
-                    Value = extension.PasswordResetToken!
-                });
-
-                // clear token
-                extension.PasswordResetIdentity = null;
-                extension.PasswordResetTokenExpiration = null;
-                extension.PasswordResetToken = null;
-                await _identityDb.SaveChangesAsync();
-            }
-            
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                return BadRequest("User not found");
-            }
-
-            if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(resetToken))
+        // Find the user BEFORE clearing the extension data
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
         {
-            var result = await _userManager.ResetPasswordAsync(user, resetToken, data.NewPassword);
-            // if (!result.Succeeded)
-            //     return FromIdentityError(result);
-
-            _ = Task.Run(() => _emailService.sendPasswordChangedEmail(email ?? "", firstName ?? ""));
-
-            return Ok();
+            return BadRequest("User not found");
         }
 
-            return NotFound();
+        // Extract reset token BEFORE clearing extension data
+        var resetToken = TokenGenerator.ExtractToken(new Token
+        {
+            Identity = extension.PasswordResetIdentity!,
+            Value = extension.PasswordResetToken!
+        });
+
+        if (string.IsNullOrEmpty(resetToken))
+        {
+            return BadRequest("Invalid reset token");
         }
+
+        // Now clear the extension data
+        extension.PasswordResetIdentity = null;
+        extension.PasswordResetTokenExpiration = null;
+        extension.PasswordResetToken = null;
+        await _identityDb.SaveChangesAsync();
+
+        // Reset the password
+        var result = await _userManager.ResetPasswordAsync(user, resetToken, data.NewPassword);
+        if (!result.Succeeded)
+        {
+            return BadRequest("Failed to reset password: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+
+        // Get user profile for email
+        var profile = await _appDbcontext.UserProfiles.FindAsync(userId);
+        var firstName = profile?.FirstName ?? "";
+        var email = profile?.UserName ?? "";
+
+        _ = Task.Run(() => _emailService.sendPasswordChangedEmail(email, firstName));
+
+        return Ok();
+    }
 
     // POST api/Account/ChangePassword
     [HttpPost("ChangePassword")]
@@ -253,7 +251,7 @@ public class AccountController : ControllerBase
         if (!ModelState.IsValid)
         {
             return ValidationProblem(ModelState);
-        } 
+        }
 
         var user = await _userManager.FindByIdAsync(model.UserID);
         if (user == null)
@@ -267,7 +265,7 @@ public class AccountController : ControllerBase
         {
             //return FromIdentityError(result);
             return BadRequest("result not found");
-        } 
+        }
 
         Console.WriteLine($"Result: {result}");
 

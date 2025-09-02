@@ -109,6 +109,7 @@ namespace NewVivaApi.Controllers.OData
 
         public async Task<IActionResult> Post([FromBody] PayAppPaymentsVw model)
         {
+            Console.WriteLine("THIS IS PAYAPP PAYMENT POST");
             if (User.Identity.IsServiceUser())
             {
                 return BadRequest();
@@ -119,19 +120,24 @@ namespace NewVivaApi.Controllers.OData
             //     return BadRequest("Insufficient permissions to create PayAppPayment for this PayApp");
             // }
 
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            // if (!ModelState.IsValid)
+            // {
+            //     return BadRequest(ModelState);
+            // }
 
             var databaseModel = new PayAppPayment();
             _mapper.Map(model, databaseModel);
+
+            var user = User.Identity?.Name;
+            Console.WriteLine($"user: {user}");
 
             databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(databaseModel.JsonAttributes);
             databaseModel.CreateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
             databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
+
+            Console.WriteLine($"databaseModel.LastUpdateUser: {databaseModel.LastUpdateUser}");
 
             // if (!TryValidateModel(databaseModel))
             // {
@@ -143,6 +149,7 @@ namespace NewVivaApi.Controllers.OData
             try
             {
                 await _context.SaveChangesAsync();
+                Console.WriteLine("has been saved sucessfully");
             }
             catch (Exception ex)
             {
@@ -161,6 +168,7 @@ namespace NewVivaApi.Controllers.OData
 
                 await payAppPaymentService.ReconcileTotalDollarAmount();
                 _logger.LogInformation("Payment reconciliation completed for PayApp {PayAppId}", model.PayAppId);
+                Console.WriteLine($"Payment reconciliation completed for PayApp {model.PayAppId}");
             }
             catch (Exception ex)
             {
@@ -168,7 +176,7 @@ namespace NewVivaApi.Controllers.OData
                 // Continue - don't fail the whole operation
             }
 
-            var resultModel = _mapper.Map<PayAppPaymentsVw>(model);
+            var resultModel = _mapper.Map<PayAppPaymentsVw>(databaseModel);
             return Created(resultModel);
         }
 

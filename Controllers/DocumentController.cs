@@ -13,10 +13,11 @@ using System.IO;
 using System.Configuration;
 using Microsoft.Extensions.Logging;
 using NewVivaApi.Services;
+using NewVivaApi.Extensions;
 
 namespace NewVivaApi.Controllers
 {
-    //[Authorize]
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class DocumentController : ControllerBase
@@ -253,32 +254,43 @@ namespace NewVivaApi.Controllers
         [HttpGet("GetDocument")]
         public IActionResult GetDocument(string key)
         {
-            // if (User.Identity?.IsServiceUser() == true)
-            // {
-            //     return BadRequest();
-            // }
-            var accessKey = _configuration["AWS:AccessKey"];
-            var secretKey = _configuration["AWS:SecretAccessKey"];
-
-            using var client = new AmazonS3Client(accessKey, secretKey, RegionEndpoint.USWest2);
-            string urlString = "";
-
             try
             {
+                if (User.Identity.IsServiceUser())
+                {
+                    return BadRequest("Service user access denied");
+                }
+
+                var accessKey = _configuration["AWS:AccessKey"];
+                var secretKey = _configuration["AWS:SecretAccessKey"];
+                var bucketName = _configuration["S3:BucketName"];
+
+                if (string.IsNullOrEmpty(accessKey) || string.IsNullOrEmpty(secretKey) || string.IsNullOrEmpty(bucketName))
+                {
+                    return BadRequest("AWS configuration is incomplete");
+                }
+
+                using var client = new AmazonS3Client(accessKey, secretKey, RegionEndpoint.USWest2);
+                string urlString = "";
+
+
                 var request = new GetPreSignedUrlRequest
                 {
-                    BucketName = _configuration["S3:BucketName"],
+                    BucketName = bucketName,
                     Key = key,
                     Expires = DateTime.UtcNow.AddMinutes(5)
                 };
                 urlString = client.GetPreSignedURL(request);
+                return Ok(urlString);
             }
             catch (Exception e)
             {
-                return BadRequest(e.Message);
-            }
+                Console.WriteLine($"Error in GetDocument: {e.Message}");
+                Console.WriteLine($"Inner Exception: {e.InnerException?.Message}");
+                Console.WriteLine($"Stack Trace: {e.StackTrace}");
 
-            return Ok(urlString);
+                return BadRequest(new { error = e.Message, innerError = e.InnerException?.Message });
+            }
         }
     }
 }

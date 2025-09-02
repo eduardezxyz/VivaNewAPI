@@ -15,5 +15,5 @@ public partial class AspNetUserExtension
 
     public DateTime? PasswordResetTokenExpiration { get; set; }
 
-    public virtual ApplicationUser IdNavigation { get; set; } = null!;
+    //public virtual ApplicationUser IdNavigation { get; set; } = null!;
 }
