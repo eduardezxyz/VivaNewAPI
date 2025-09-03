@@ -35,7 +35,7 @@ namespace NewVivaApi.Services
             complete = GetTotalBytes(token, aesKey.IV);
 
             generatedToken.Value = Convert.ToBase64String(complete);
-            generatedToken.Expiration = DateTime.Now.AddMinutes(15);
+            generatedToken.Expiration = DateTime.UtcNow.AddMinutes(15);
 
             return generatedToken;
         }

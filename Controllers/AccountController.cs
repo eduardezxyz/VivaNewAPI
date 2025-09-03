@@ -144,8 +144,11 @@ public class AccountController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> SendPasswordLink([FromQuery] string Email, [FromQuery] string domain)
     {
-        if (User.Identity?.IsServiceUser() == true) return BadRequest();
-        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+        if (User.Identity?.IsServiceUser() == true)
+            return BadRequest();
+
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
 
         var user = await _userManager.FindByEmailAsync(Email);
         if (user != null)
@@ -169,6 +172,9 @@ public class AccountController : ControllerBase
 
             await _identityDb.SaveChangesAsync();
 
+            // Verify it was actually saved
+            var savedExtension = await _identityDb.AspNetUserExtensions.FindAsync(user.Id);
+
             var firstName = profile?.FirstName ?? user.FirstName ?? "";
             _emailService.sendPasswordResetLinkEmail(Email, firstName, user.UserName, extension.PasswordResetIdentity!, domain);
         }
@@ -181,9 +187,19 @@ public class AccountController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> ResetFromToken([FromBody] ResetFromTokenData data)
     {
-        if (User.Identity?.IsServiceUser() == true) return BadRequest();
-        if (!ModelState.IsValid) return ValidationProblem(ModelState);
-        if (!string.Equals(data.NewPassword, data.ConfirmPassword)) return BadRequest("Passwords do not match");
+        if (User.Identity?.IsServiceUser() == true)
+            return BadRequest();
+
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
+
+        if (!string.Equals(data.NewPassword, data.ConfirmPassword))
+            return BadRequest("Passwords do not match");
+
+        // First, let's see what's actually in the database
+        var allExtensions = _identityDb.AspNetUserExtensions
+            .Where(e => e.PasswordResetIdentity != null)
+            .ToList();
 
         // Look up extension by identity (and not expired)
         var extension = _identityDb.AspNetUserExtensions
@@ -193,6 +209,7 @@ public class AccountController : ControllerBase
 
         if (extension == null)
         {
+            Console.WriteLine("No matching extension found");
             return BadRequest("Invalid or expired token");
         }
 
@@ -223,12 +240,22 @@ public class AccountController : ControllerBase
         extension.PasswordResetToken = null;
         await _identityDb.SaveChangesAsync();
 
+        Console.WriteLine($"About to reset password for user: {user.UserName}");
+        Console.WriteLine($"New password length: {data.NewPassword.Length}");
+
         // Reset the password
         var result = await _userManager.ResetPasswordAsync(user, resetToken, data.NewPassword);
+        Console.WriteLine($"Reset password result - Succeeded: {result.Succeeded}");
         if (!result.Succeeded)
         {
+            Console.WriteLine("Reset password errors:");
+            foreach (var error in result.Errors)
+            {
+                Console.WriteLine($"  - {error.Code}: {error.Description}");
+            }
             return BadRequest("Failed to reset password: " + string.Join(", ", result.Errors.Select(e => e.Description)));
         }
+        Console.WriteLine("Password reset successful!");
 
         // Get user profile for email
         var profile = await _appDbcontext.UserProfiles.FindAsync(userId);
@@ -389,10 +416,10 @@ public class AccountController : ControllerBase
     {
         Console.WriteLine("=== REGISTER SYSTEM USER ===");
 
-        // if (User.Identity.IsAuthenticated && IsServiceUser())
-        // {
-        //     return BadRequest();
-        // }
+        if (User.Identity.IsAuthenticated && IsServiceUser())
+        {
+            return BadRequest();
+        }
 
         // // Use ModelState validation instead of manual validation
         // if (!ModelState.IsValid)
@@ -402,11 +429,9 @@ public class AccountController : ControllerBase
 
         try
         {
-            Console.WriteLine("Extracting data from request...");
             // Extract data from JSON (avoiding model binding issues)
             var extractedData = ExtractRegisterData(data);
 
-            Console.WriteLine($"Extracted data: {extractedData.FirstName} {extractedData.LastName}, Email: {extractedData.Email}, Phone: {extractedData.PhoneNumber}, CompanyID: {extractedData.CompanyID}, isAdminTF: {extractedData.IsAdminTF}, isGCTF: {extractedData.IsGCTF}, isSCTF: {extractedData.IsSCTF}, gcApproveTF: {extractedData.GcApproveTF}");
             // Manual validation
             var validationErrors = ValidateRegisterData(extractedData);
             if (validationErrors.Any())
@@ -426,7 +451,6 @@ public class AccountController : ControllerBase
             };
 
             string generatedPassword = PasswordGenerationService.GeneratePassword(requirements);
-            Console.WriteLine($"Generated password for user: {extractedData.Email}");
 
             //Create model with proper constructor and dependencies
             var model = new RegisterSystemUserModel(_appDbcontext, _userManager, _emailService, _httpContextAccessor)
@@ -446,10 +470,8 @@ public class AccountController : ControllerBase
 
             // Register the user
             var creatorUserName = User?.Identity?.Name ?? string.Empty;
-            Console.WriteLine($"Registering user: {extractedData.Email} by {creatorUserName}");
 
             await model.RegisterAsync(creatorUserName);
-            Console.WriteLine("User registration completed.");
 
             return Ok(new
             {
