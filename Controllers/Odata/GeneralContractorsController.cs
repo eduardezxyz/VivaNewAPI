@@ -157,7 +157,6 @@ namespace NewVivaApi.Controllers.Odata
             //Email
             var userId = User.Identity.GetUserId();
             var genConId = model.GeneralContractorId;
-            Console.WriteLine($"Before email services: userId = {userId},  GenConID = {genConId}");
             _emailService.sendAdminEmailNewGeneralContractor(userId, genConId);
 
             //Register new user
@@ -213,7 +212,6 @@ namespace NewVivaApi.Controllers.Odata
             }
 
             var updatedModel = await _context.GeneralContractorsVws.FirstOrDefaultAsync(g => g.GeneralContractorId == key);
-            Console.WriteLine($"==========General Contractor PATCH: Updated model=============: {updatedModel}");
             await RegisterNewGeneralContractor(updatedModel);
 
             return Ok(updatedModel);
@@ -262,17 +260,13 @@ namespace NewVivaApi.Controllers.Odata
             JObject jsonAttributes = JObject.Parse(model.JsonAttributes);
             string userName = jsonAttributes["ContactEmail"].ToString();
 
-            Console.WriteLine($"==========General Contractor POST/PATCH: RegisterNewGeneralContractor model=============: {model}");
-
             ApplicationUser existingUser = await _userManager.FindByEmailAsync(userName);
             if (existingUser != null && existingUser.Id != null)
             {
                 //User Already exists, don't create them.
-                Console.WriteLine("already exists");
+                //Console.WriteLine("already exists");
                 return;
             }
-
-            Console.WriteLine($"existing user exists: {existingUser}");
 
             string contactName = jsonAttributes["ContactName"].ToString();
             string[] names = contactName.Split(' ');
@@ -303,7 +297,6 @@ namespace NewVivaApi.Controllers.Odata
             };
 
             string generatedPassword = PasswordGenerationService.GeneratePassword(requirements);
-            Console.WriteLine($"Generated password for user: {userName}");
 
             RegisterSystemUserModel newGeneralContractorUser = new RegisterSystemUserModel(_context, _userManager, _emailService, _httpContextAccessor)
             {
@@ -322,10 +315,9 @@ namespace NewVivaApi.Controllers.Odata
 
             // Register the user
             var creatorUserName = User?.Identity?.Name ?? string.Empty;
-            Console.WriteLine($"Registering user: {userName} by {creatorUserName}");
+            //Console.WriteLine($"Registering user: {userName} by {creatorUserName}");
 
             await newGeneralContractorUser.RegisterAsync(creatorUserName);
-            Console.WriteLine("User registration completed.");
 
             return;
 

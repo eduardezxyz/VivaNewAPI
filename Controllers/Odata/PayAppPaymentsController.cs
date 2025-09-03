@@ -109,7 +109,6 @@ namespace NewVivaApi.Controllers.OData
 
         public async Task<IActionResult> Post([FromBody] PayAppPaymentsVw model)
         {
-            Console.WriteLine("THIS IS PAYAPP PAYMENT POST");
             if (User.Identity.IsServiceUser())
             {
                 return BadRequest();
@@ -129,7 +128,6 @@ namespace NewVivaApi.Controllers.OData
             _mapper.Map(model, databaseModel);
 
             var user = User.Identity?.Name;
-            Console.WriteLine($"user: {user}");
 
             databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(databaseModel.JsonAttributes);
             databaseModel.CreateDt = DateTimeOffset.UtcNow;
@@ -137,7 +135,6 @@ namespace NewVivaApi.Controllers.OData
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
             databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
 
-            Console.WriteLine($"databaseModel.LastUpdateUser: {databaseModel.LastUpdateUser}");
 
             // if (!TryValidateModel(databaseModel))
             // {
@@ -149,7 +146,6 @@ namespace NewVivaApi.Controllers.OData
             try
             {
                 await _context.SaveChangesAsync();
-                Console.WriteLine("has been saved sucessfully");
             }
             catch (Exception ex)
             {
@@ -168,7 +164,6 @@ namespace NewVivaApi.Controllers.OData
 
                 await payAppPaymentService.ReconcileTotalDollarAmount();
                 _logger.LogInformation("Payment reconciliation completed for PayApp {PayAppId}", model.PayAppId);
-                Console.WriteLine($"Payment reconciliation completed for PayApp {model.PayAppId}");
             }
             catch (Exception ex)
             {
@@ -228,7 +223,6 @@ namespace NewVivaApi.Controllers.OData
             {
                 _logger.LogError(ex, "Error updating PayAppPayment {PaymentId}", key);
                 var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-                Console.WriteLine($"Database error: {ex.Message}. Inner: {innerMessage}");
                 return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
             }
 
@@ -282,7 +276,6 @@ namespace NewVivaApi.Controllers.OData
 
                 await payAppPaymentService.ReconcileTotalDollarAmount();
 
-                Console.WriteLine($"Reconciliation completed for PayApp ID {model.PayAppId}");
                 _logger.LogInformation("Payment reconciliation completed for PayApp {PayAppId} after deletion", model.PayAppId);
             }
             catch (Exception ex)

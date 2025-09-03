@@ -31,7 +31,6 @@ namespace NewVivaApi.Controllers
             // Get the logged-in user ID from the JWT
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
                          ?? User.FindFirst("sub")?.Value;
-            Console.WriteLine($"Generated password for user: {userId}");
 
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized("User ID not found in token.");

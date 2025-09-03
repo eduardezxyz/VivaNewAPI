@@ -60,33 +60,25 @@ namespace NewVivaApi.Controllers.Odata
 
             if (User.Identity.IsVivaUser())
             {
-                Console.WriteLine("This is VivaUser");
                 model = _context.SubcontractorsVws.OrderBy(subcon => subcon.SubcontractorName);
             }
             else if (User.Identity.IsGeneralContractor())
             {
                 int generalContractorId = (int)User.Identity.GetGeneralContractorId();
-                Console.WriteLine($"GetSecureModel() - GeneralContractor : {generalContractorId}");
 
                 List<int> subProjList = _context.SubcontractorProjectsVws
                                             .Where(subProj => subProj.GeneralContractorId == generalContractorId)
                                             .Select(subproj => subproj.SubcontractorId)
                                             .ToList();
 
-                Console.WriteLine($"GetSecureModel() - subProjList count: {subProjList.Count}");
-                Console.WriteLine($"GetSecureModel() - subProjList values: [{string.Join(", ", subProjList)}]");
-
                 model = _context.SubcontractorsVws
                     .Where(subCon => subProjList.Contains((int)subCon.SubcontractorId))
                     .OrderBy(subcon => subcon.SubcontractorName);
 
-                Console.WriteLine($"GetSecureModel() - model {model}");
             }
             else if (User.Identity.IsSubContractor())
             {
                 int subContractorId = (int)User.Identity.GetSubcontractorId();
-                Console.WriteLine($"GetSecureModel() - Subcontractor : {subContractorId}");
-
                 model = _context.SubcontractorsVws.Where(subCon => subCon.SubcontractorId == subContractorId);
             }
             else
@@ -167,7 +159,6 @@ namespace NewVivaApi.Controllers.Odata
 
             var userId = User.Identity.GetUserId();
             var genConId = model.SubcontractorId;
-            Console.WriteLine($"Before email services: userId = {userId},  GenConID = {genConId}");
             _emailService.sendAdminEmailNewSubcontractor(User.Identity.GetUserId(), model.SubcontractorId);
 
             await RegisterNewSubcontractorUser(resultModel);
@@ -176,8 +167,6 @@ namespace NewVivaApi.Controllers.Odata
 
         public async Task RegisterNewSubcontractorUser(SubcontractorsVw model)
         {
-            Console.WriteLine($"Model: {model}");
-            Console.WriteLine($"JsonAttributes: {model?.JsonAttributes}");
             if (User.Identity.IsServiceUser())
             {
                 return;
@@ -241,7 +230,6 @@ namespace NewVivaApi.Controllers.Odata
             };
 
             string generatedPassword = PasswordGenerationService.GeneratePassword(requirements);
-            Console.WriteLine($"Generated password for user: {userName}");
 
             RegisterSystemUserModel newSubContractorUser = new RegisterSystemUserModel(_context, _userManager, _emailService, _httpContextAccessor)
             {
@@ -260,13 +248,9 @@ namespace NewVivaApi.Controllers.Odata
 
             // Register the user
             var creatorUserName = User?.Identity?.Name ?? string.Empty;
-            Console.WriteLine($"Registering user: {userName} by {creatorUserName}");
-
             await newSubContractorUser.RegisterAsync(creatorUserName);
-            Console.WriteLine("User registration completed.");
 
             return;
-
         }
 
         [HttpPatch]

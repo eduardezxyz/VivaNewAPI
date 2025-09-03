@@ -67,7 +67,6 @@ public class RegisterSystemUserModel
 
     public async Task RegisterAsync(string creatorUserName = "")
     {
-        Console.WriteLine($"RegisterAsync called with UserName: {this.UserName}, FirstName: {this.FirstName}, LastName: {this.LastName}, PhoneNumber: {this.PhoneNumber}, CompanyID: {this.CompanyID}, isAdminTF: {this.isAdminTF}, isGCTF: {this.isGCTF}, isSCTF: {this.isSCTF}, gcApproveTF: {this.gcApproveTF}");
         await CreateAspNetUserAsync();
         await CreateUserProfileAsync();
         await CreateVivaRoleAsync();
@@ -76,10 +75,8 @@ public class RegisterSystemUserModel
 
     private async Task CreateUserProfileAsync() //TODO
     {
-        Console.WriteLine($"CreateUserProfileAsync called with UserName: {this.UserName}, FirstName: {this.FirstName}, LastName: {this.LastName}, PhoneNumber: {this.PhoneNumber}, UserId: {_userId}");
         // Create UserProfile Record
         var currentUser = _httpContextAccessor.HttpContext?.User?.Identity?.Name ?? "System";
-        Console.WriteLine($"Current user for UserProfile creation: {currentUser}");
 
         var userProfile = new UserProfile
         {
@@ -92,16 +89,13 @@ public class RegisterSystemUserModel
             LastUpdateDt = DateTime.UtcNow,
             LastUpdateUser = currentUser
         };
-        Console.WriteLine($"Creating UserProfile with UserId: {_userId}, UserName: {this.UserName}, FirstName: {this.FirstName}, LastName: {this.LastName}, PhoneNumber: {this.PhoneNumber}");
 
         _context.UserProfiles.Add(userProfile);
-        Console.WriteLine($"UserProfile created for UserId: {_userId}, UserName: {this.UserName}");
         await _context.SaveChangesAsync();
     }
 
     private async Task CreateAspNetUserAsync()
     {
-        Console.WriteLine($"CreateAspNetUserAsync called with UserName: {this.UserName}, FirstName: {this.FirstName}, LastName: {this.LastName}, PhoneNumber: {this.PhoneNumber}, CompanyID: {this.CompanyID}");
         var user = new ApplicationUser
         {
             UserName = this.UserName,
@@ -120,23 +114,18 @@ public class RegisterSystemUserModel
             IsActive = true,
             ResetPasswordOnLoginTF = true // This will be set by your trigger anyway
         };
-        Console.WriteLine($"Creating ApplicationUser with UserName: {this.UserName}, Email: {this.UserName}, FirstName: {this.FirstName}, LastName: {this.LastName}, PhoneNumber: {this.PhoneNumber}");
 
         var result = await _userManager.CreateAsync(user, this.Password);
-        Console.WriteLine($"CreateAsync result: {result.Succeeded}");
-
         if (!result.Succeeded)
         {
             throw new UserCreationException(result);
         }
 
         _userId = user.Id;
-        Console.WriteLine($"ApplicationUser created with UserId: {_userId}");
     }
 
     private async Task CreateVivaRoleAsync()
     {
-        Console.WriteLine($"CreateVivaRoleAsync called with UserId: {_userId}, isAdminTF: {this.isAdminTF}, isGCTF: {this.isGCTF}, isSCTF: {this.isSCTF}, CompanyID: {this.CompanyID}");
         var currentUser = _httpContextAccessor.HttpContext?.User?.Identity?.Name ?? "System";
         var now = DateTime.UtcNow;
 
@@ -151,9 +140,7 @@ public class RegisterSystemUserModel
             };
 
             _context.AdminUsers.Add(adminUser);
-            Console.WriteLine($"AdminUser created for UserId: {_userId}");
             await _context.SaveChangesAsync();
-            Console.WriteLine($"AdminUser saved to database for UserId: {_userId}");
         }
         else if (this.isGCTF)
         {
@@ -168,9 +155,7 @@ public class RegisterSystemUserModel
             };
 
             _context.GeneralContractorUsers.Add(generalContractorUser);
-            Console.WriteLine($"GeneralContractorUser created for UserId: {_userId}, GeneralContractorId: {this.CompanyID}");
             await _context.SaveChangesAsync();
-            Console.WriteLine($"GeneralContractorUser saved to database for UserId: {_userId}");
         }
         else if (this.isSCTF)
         {
@@ -184,9 +169,7 @@ public class RegisterSystemUserModel
             };
 
             _context.SubcontractorUsers.Add(subcontractorUser);
-            Console.WriteLine($"SubcontractorUser created for UserId: {_userId}, SubcontractorId: {this.CompanyID}");
             await _context.SaveChangesAsync();
-            Console.WriteLine($"SubcontractorUser saved to database for UserId: {_userId}");
         }
         else
         {

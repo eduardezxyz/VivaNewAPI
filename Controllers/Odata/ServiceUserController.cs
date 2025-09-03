@@ -143,7 +143,6 @@ namespace NewVivaApi.Controllers.OData
         [HttpPost("CreateProject")]
         public async Task<IActionResult> CreateProject([FromBody] ProjectsVw model)
         {
-            //Console.WriteLine("Creating Project with model: " + model);
             if (!ModelState.IsValid)
             {
                 Console.WriteLine("ModelState is invalid");
@@ -152,21 +151,16 @@ namespace NewVivaApi.Controllers.OData
 
             var genContractorId = model.GeneralContractorId;
 
-            //Console.WriteLine("ModelState is valid");
             var databaseModel = new Project();
             _mapper.Map(model, databaseModel);
 
             databaseModel.GeneralContractorId = genContractorId;
 
-            //Console.WriteLine("Mapping completed, setting additional properties");
             databaseModel.CreateDt = DateTime.UtcNow;
             databaseModel.LastUpdateDt = DateTime.UtcNow;
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
             databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
 
-            //Console.WriteLine("Creating Project with model: " + databaseModel);
-
-            //Console.WriteLine("Setting additional properties completed");
             //ModelState.Remove("GeneralContractor");
 
             // Before validation, load the GeneralContractor
@@ -193,10 +187,8 @@ namespace NewVivaApi.Controllers.OData
                 .AnyAsync(p => p.GeneralContractorId == databaseModel.GeneralContractorId && 
                               p.CreatedByUser == User.Identity.Name);
 
-            Console.WriteLine($"GeneralContractorId {databaseModel.GeneralContractorId} exists: {generalContractorExists}");
             if (!generalContractorExists)
             {
-                Console.WriteLine("GeneralContractorId doesn't exist or you don't have permission to access it");
                 return BadRequest("GeneralContractorId doesn't exist or you don't have permission to access it");
             }
 
@@ -238,7 +230,6 @@ namespace NewVivaApi.Controllers.OData
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
             databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
 
-            Console.WriteLine("Creating SubcontractorProject with model: " + databaseModel);
 
             var subcontractor = await _context.Subcontractors
                 .FirstOrDefaultAsync(gc => gc.SubcontractorId == databaseModel.SubcontractorId);

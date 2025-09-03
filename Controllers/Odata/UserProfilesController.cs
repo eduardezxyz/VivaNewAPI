@@ -197,10 +197,8 @@ namespace NewVivaApi.Controllers
             }
             */
 
-            Console.WriteLine("=== PATCH USER PROFILE ===");
             try
             {
-                Console.WriteLine($"Patching user profile for key: {key}");
                 var patchData = ExtractPatchData(data);
 
                 var validationErrors = ValidatePatchData(patchData);
@@ -224,11 +222,9 @@ namespace NewVivaApi.Controllers
 
                 // Update audit fields
                 dbModel.LastUpdateDt = DateTimeOffset.UtcNow;
-                dbModel.LastUpdateUser = User?.Identity?.Name ?? "system@api.com";
-                Console.WriteLine($"Updated by: {dbModel.LastUpdateUser} at {dbModel.LastUpdateDt}");
+                dbModel.LastUpdateUser = User?.Identity?.Name ?? "Unknown";
 
                 await _context.SaveChangesAsync();
-                Console.WriteLine("User profile updated successfully.");
 
                 // Return updated view model
                 var updatedViewModel = await _context.UserProfilesVws
@@ -295,8 +291,6 @@ namespace NewVivaApi.Controllers
         // Helper methods (following your RegisterSystemUser pattern)
         private PatchDataModel ExtractPatchData(JsonElement data)
         {
-            Console.WriteLine("Extracting patch data from JSON...");
-
             return new PatchDataModel
             {
                 FirstName = GetJsonProperty(data, "FirstName"),
@@ -329,25 +323,21 @@ namespace NewVivaApi.Controllers
             if (!string.IsNullOrEmpty(patchData.FirstName))
             {
                 dbModel.FirstName = patchData.FirstName;
-                Console.WriteLine($"Updated FirstName: {dbModel.FirstName}");
             }
 
             if (!string.IsNullOrEmpty(patchData.LastName))
             {
                 dbModel.LastName = patchData.LastName;
-                Console.WriteLine($"Updated LastName: {dbModel.LastName}");
             }
 
             if (!string.IsNullOrEmpty(patchData.PhoneNumber))
             {
                 dbModel.PhoneNumber = patchData.PhoneNumber;
-                Console.WriteLine($"Updated PhoneNumber: {dbModel.PhoneNumber}");
             }
 
             if (!string.IsNullOrEmpty(patchData.UserName))
             {
                 dbModel.UserName = patchData.UserName;
-                Console.WriteLine($"Updated UserName: {dbModel.UserName}");
             }
         }
 

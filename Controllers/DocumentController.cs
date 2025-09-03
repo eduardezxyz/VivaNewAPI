@@ -51,8 +51,6 @@ namespace NewVivaApi.Controllers
                 return BadRequest("Request must have multipart/form-data content type");
             }
 
-            Console.WriteLine($"DocumentType: {documentType}, KeyID: {keyID}");
-
             // Use parameter files first, then fallback to Request.Form.Files
             var uploadFiles = files?.Any() == true ? files : Request.Form.Files.ToList();
 
@@ -60,7 +58,6 @@ namespace NewVivaApi.Controllers
             {
                 return BadRequest("No files uploaded");
             }
-            Console.WriteLine($"Files count: {uploadFiles.Count}");
 
             foreach (var postedFile in uploadFiles)
             {
@@ -74,13 +71,9 @@ namespace NewVivaApi.Controllers
                     newFileName = newFileName + fileExtension;
                 }
 
-                Console.WriteLine($"Processing file: {postedFile.FileName}, New File Name: {newFileName}");
-
                 // Upload document to Cloud
                 var bucketName = _configuration["S3:BucketName"];
                 var filePath = _configuration["S3:FilePath"];
-
-                Console.WriteLine($"Configuration values - BucketName: '{bucketName}', FilePath: '{filePath}'");
 
                 _logger.LogInformation("Configuration values - BucketName: '{BucketName}', FilePath: '{FilePath}'",
                     bucketName ?? "NULL", filePath ?? "NULL");
@@ -99,7 +92,6 @@ namespace NewVivaApi.Controllers
                     UploadedFile = postedFile,
                 };
 
-                Console.WriteLine($"Uploading to S3: Bucket: {upObj.BucketName}, Key: {upObj.Key}");
                 _logger.LogInformation("Uploading file to S3: Bucket: {BucketName}, Key: {Key}",
                     upObj.BucketName, upObj.Key);
 
@@ -117,7 +109,6 @@ namespace NewVivaApi.Controllers
                     var s3Uploader = new S3Upload(upObj, accessKey, secretKey);
                     _logger.LogInformation("S3Upload created successfully, about to upload...");
                     await s3Uploader.Upload();
-                    Console.WriteLine("File uploaded successfully to S3.");
                 }
                 catch (Exception e)
                 {
@@ -136,9 +127,6 @@ namespace NewVivaApi.Controllers
                     CreateByUser = User.Identity?.Name ?? "Unknown",
                     CreateDt = DateTimeOffset.UtcNow
                 };
-
-                Console.WriteLine($"Bucket: {uploadedDoc.Bucket}, Path: {uploadedDoc.Path}, FileName: {uploadedDoc.FileName}, DownloadFileName: {uploadedDoc.DownloadFileName}");
-                Console.WriteLine($"DocumentTypeId: {uploadedDoc.DocumentTypeId}, Created By: {uploadedDoc.CreateByUser}, Created At: {uploadedDoc.CreateDt}");
 
                 switch (documentType)
                 {
@@ -227,22 +215,18 @@ namespace NewVivaApi.Controllers
                 //Email service
                 if (nd != null)
                 {
-                    Console.WriteLine("in document email service");
                     var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
                     if (nd.GeneralContractorId != null && userId != null)
                     {
-                        Console.WriteLine("in document email service");
                         await _emailService.sendGCEmailReportsAvailable(userId, nd.GeneralContractorId.Value);
                     }
                     if (documentType == 2 && nd.PayAppId != null && userId != null)
                     {
-                        Console.WriteLine("in document email service");
                         await _emailService.sendLeinReleaseSubmittedEmail(userId, nd.PayAppId.Value);
                     }
                     else if (documentType == 3 && userId != null)
                     {
-                        Console.WriteLine("in document email service");
                         await _emailService.sendSCNewSignupForm(userId, uploadedDoc.DocumentId);
                     }
                 }

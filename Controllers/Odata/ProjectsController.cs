@@ -147,7 +147,7 @@ public class ProjectsController : ODataController
         }
 
         var existingContractors = await _context.GeneralContractors.Select(gc => gc.GeneralContractorId).ToListAsync();
-        Console.WriteLine($"Existing contractor IDs: {string.Join(", ", existingContractors)}");
+        //Console.WriteLine($"Existing contractor IDs: {string.Join(", ", existingContractors)}");
 
         var dbModel = _mapper.Map<Project>(model);
 

@@ -61,19 +61,13 @@ namespace NewVivaApi.Services
 
         public EmailParameters createEmail(EmailParameters ep, Document attachment = null)
         {
-            Console.WriteLine("=== createEmail method started ===");
             //Check Params to be valid
             if (ep.templateHTML == null || ep.parmList.Count < 1 || ep.emails == null || ep.subject == null || ep.fromEmail == null || ep.createdByUser == null)
             {
-                Console.WriteLine("Email validation FAILED - missing required parameters");
-                Console.WriteLine($"Validation details: templateHTML={ep.templateHTML != null}, parmListCount={ep.parmList?.Count ?? 0}, emails={ep.emails}, subject={ep.subject}, fromEmail={ep.fromEmail}, createdByUser={ep.createdByUser}");
-
                 ep.sentSuccessfulTF = false;
                 ep.resultMessage = "One or more of the email parameters is empty or null.";
                 return ep;
             }
-
-            Console.WriteLine("Email validation PASSED");
 
             ep.emailBodyHTML = ep.templateHTML;
 
@@ -150,8 +144,6 @@ namespace NewVivaApi.Services
                         CommandType = CommandType.StoredProcedure
                     };
 
-                    Console.WriteLine("Creating stored procedure parameters for attachment email...");
-
                     var emailIdParam = new SqlParameter("@EmailMessageID", SqlDbType.Int)
                     {
                         Direction = ParameterDirection.InputOutput,
@@ -190,7 +182,6 @@ namespace NewVivaApi.Services
 
                     var result = command.ExecuteScalar();
                     refEmailMessageID = emailIdParam.Value as int?;
-                    Console.WriteLine($"Email with attachment inserted successfully with ID: {refEmailMessageID}");
                 }
             }
             catch (SqlException sqlEx)
@@ -226,12 +217,9 @@ namespace NewVivaApi.Services
                 return ep;
             }
 
-            Console.WriteLine($"Email successfully queued for sending with ID: {refEmailMessageID}");
             ep.emailMessageID = refEmailMessageID;
             ep.sentSuccessfulTF = true;
             ep.resultMessage = "Email sent successfully.";
-
-            Console.WriteLine("=== createEmail method completed successfully ===");
             return ep;
         }
 
@@ -308,7 +296,6 @@ namespace NewVivaApi.Services
 
         public async Task sendNewAdminEmail(string UserID, string TmpPassword)
         {
-            Console.WriteLine($"=== STARTING sendNewAdminEmail ===");
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             if (userProfileRecord == null)
             {
@@ -331,7 +318,6 @@ namespace NewVivaApi.Services
 
             string result = generateEmails(templateHTML, keyPairs, emailList, "New Admin Added", userProfileRecord.UserName);
 
-            Console.WriteLine($"=== COMPLETED sendNewAdminEmail ===");
         }
 
         public void sendPasswordResetLinkEmail(string Email, string Name, string UserName, string resetToken, string domain)
@@ -408,19 +394,17 @@ namespace NewVivaApi.Services
 
         public void sendAdminEmailNewSubcontractor(string UserID, int SubcontractorID)
         {
-            Console.WriteLine($"=== STARTING sendAdminEmailNewSubcontractor ===");
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             if (userProfileRecord == null)
             {
                 Console.WriteLine($"ERROR: User profile not found for UserID: {UserID}");
                 return;
             }
-            else
-            {
-                Console.WriteLine($"Found user: {userProfileRecord.UserName} - {userProfileRecord.FirstName} {userProfileRecord.LastName}");
-            }
+            // else
+            // {
+            //     Console.WriteLine($"Found user: {userProfileRecord.UserName} - {userProfileRecord.FirstName} {userProfileRecord.LastName}");
+            // }
 
-            Console.WriteLine($"Looking up SubContractor for ID: {SubcontractorID}");
             SubcontractorsVw subcontractorRecord = _context.SubcontractorsVws.FirstOrDefault(sc => sc.SubcontractorId == SubcontractorID);
 
             if (subcontractorRecord == null)
@@ -428,14 +412,12 @@ namespace NewVivaApi.Services
                 Console.WriteLine($"ERROR: SubContractor not found for ID: {SubcontractorID}");
                 return;
             }
-            else
-            {
-                Console.WriteLine($"Found SC: {subcontractorRecord.SubcontractorName}");
-            }
+            // else
+            // {
+            //     Console.WriteLine($"Found SC: {subcontractorRecord.SubcontractorName}");
+            // }
 
-            Console.WriteLine($"Getting admin email list...");
             string emailList = listOfAdminsToNotify();
-            Console.WriteLine($"Admin email list: {emailList}");
 
             if (string.IsNullOrEmpty(emailList))
             {
@@ -444,35 +426,21 @@ namespace NewVivaApi.Services
             }
 
             string templateHTML = "AdminNewSC";
-            Console.WriteLine($"Using email template: {templateHTML}");
 
             Dictionary<string, string> keyPairs = new Dictionary<string, string>();
             keyPairs.Add("{{SubcontractorName}}", subcontractorRecord.SubcontractorName);
             keyPairs.Add("{{UserName}}", userProfileRecord.UserName);
 
-            Console.WriteLine($"Email placeholders:");
-            foreach (var kvp in keyPairs)
-            {
-                Console.WriteLine($"  {kvp.Key} = {kvp.Value}");
-            }
-
-            Console.WriteLine($"Calling generateEmails...");
-            Console.WriteLine($"  Template: {templateHTML}");
-            Console.WriteLine($"  Recipients: {emailList}");
-            Console.WriteLine($"  Subject: New General Contractor Added");
-            Console.WriteLine($"  From User: {userProfileRecord.UserName}");
+            // foreach (var kvp in keyPairs)
+            // {
+            //     Console.WriteLine($"  {kvp.Key} = {kvp.Value}");
+            // }
 
             string result = generateEmails(templateHTML, keyPairs, emailList, "New Subcontractor Added", userProfileRecord.UserName);
-
-            Console.WriteLine($"generateEmails result: {result}");
-            Console.WriteLine($"=== COMPLETED sendAdminEmailNewSubcontractor ===");
         }
 
         public void sendAdminEmailNewGeneralContractor(string UserID, int GeneralContractorID)
         {
-            Console.WriteLine($"=== STARTING sendAdminEmailNewGeneralContractor ===");
-            Console.WriteLine($"Input Parameters - UserID: {UserID}, GeneralContractorID: {GeneralContractorID}");
-
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
 
             if (userProfileRecord == null)
@@ -480,12 +448,11 @@ namespace NewVivaApi.Services
                 Console.WriteLine($"ERROR: User profile not found for UserID: {UserID}");
                 return;
             }
-            else
-            {
-                Console.WriteLine($"Found user: {userProfileRecord.UserName} - {userProfileRecord.FirstName} {userProfileRecord.LastName}");
-            }
+            // else
+            // {
+            //     Console.WriteLine($"Found user: {userProfileRecord.UserName} - {userProfileRecord.FirstName} {userProfileRecord.LastName}");
+            // }
 
-            Console.WriteLine($"Looking up General Contractor for ID: {GeneralContractorID}");
             GeneralContractorsVw generalContractorsRecord = _context.GeneralContractorsVws.FirstOrDefault(gc => gc.GeneralContractorId == GeneralContractorID);
 
             if (generalContractorsRecord == null)
@@ -493,14 +460,12 @@ namespace NewVivaApi.Services
                 Console.WriteLine($"ERROR: General Contractor not found for ID: {GeneralContractorID}");
                 return;
             }
-            else
-            {
-                Console.WriteLine($"Found GC: {generalContractorsRecord.GeneralContractorName}");
-            }
+            // else
+            // {
+            //     Console.WriteLine($"Found GC: {generalContractorsRecord.GeneralContractorName}");
+            // }
 
-            Console.WriteLine($"Getting admin email list...");
             string emailList = listOfAdminsToNotify();
-            Console.WriteLine($"Admin email list: {emailList}");
 
             if (string.IsNullOrEmpty(emailList))
             {
@@ -509,28 +474,18 @@ namespace NewVivaApi.Services
             }
 
             string templateHTML = "AdminNewGC";
-            Console.WriteLine($"Using email template: {templateHTML}");
 
             Dictionary<string, string> keyPairs = new Dictionary<string, string>();
             keyPairs.Add("{{GeneralContractorName}}", generalContractorsRecord.GeneralContractorName);
             keyPairs.Add("{{UserName}}", userProfileRecord.UserName);
 
-            Console.WriteLine($"Email placeholders:");
-            foreach (var kvp in keyPairs)
-            {
-                Console.WriteLine($"  {kvp.Key} = {kvp.Value}");
-            }
-
-            Console.WriteLine($"Calling generateEmails...");
-            Console.WriteLine($"  Template: {templateHTML}");
-            Console.WriteLine($"  Recipients: {emailList}");
-            Console.WriteLine($"  Subject: New General Contractor Added");
-            Console.WriteLine($"  From User: {userProfileRecord.UserName}");
+            // Console.WriteLine($"Email placeholders:");
+            // foreach (var kvp in keyPairs)
+            // {
+            //     Console.WriteLine($"  {kvp.Key} = {kvp.Value}");
+            // }
 
             string result = generateEmails(templateHTML, keyPairs, emailList, "New General Contractor Added", userProfileRecord.UserName);
-
-            Console.WriteLine($"generateEmails result: {result}");
-            Console.WriteLine($"=== COMPLETED sendAdminEmailNewGeneralContractor ===");
         }
 
         public async Task sendAdminEmailNewSubcontractorUser(string UserID, int SubcontractorID, string creatorUserName)
@@ -570,21 +525,17 @@ namespace NewVivaApi.Services
 
         public async Task sendAdminEmailNewAdmin(string UserID)
         {
-            Console.WriteLine($"=== STARTING sendAdminEmailNewAdmin ===");
-            Console.WriteLine($"Input Parameters - UserID: {UserID}");
-
             UserProfilesVw userProfileRecord = _context.UserProfilesVws.FirstOrDefault(up => up.UserId == UserID);
             if (userProfileRecord == null)
             {
                 Console.WriteLine($"ERROR: User profile not found for UserID: {UserID}");
                 return;
             }
-            else
-            {
-                Console.WriteLine($"Found user: {userProfileRecord.UserName} - {userProfileRecord.FirstName} {userProfileRecord.LastName}");
-            }
+            // else
+            // {
+            //     Console.WriteLine($"Found user: {userProfileRecord.UserName} - {userProfileRecord.FirstName} {userProfileRecord.LastName}");
+            // }
 
-            Console.WriteLine($"Getting admin email list...");
             string emailList = listOfAdminsToNotify();
             if (string.IsNullOrEmpty(emailList))
             {
@@ -593,21 +544,11 @@ namespace NewVivaApi.Services
             }
 
             string templateHTML = "AdminNewAdmin";
-            Console.WriteLine($"Using email template: {templateHTML}");
 
             Dictionary<string, string> keyPairs = new Dictionary<string, string>();
             keyPairs.Add("{{UserName}}", userProfileRecord.UserName);
 
-            Console.WriteLine($"Calling generateEmails...");
-            Console.WriteLine($"  Template: {templateHTML}");
-            Console.WriteLine($"  Recipients: {emailList}");
-            Console.WriteLine($"  From User: {userProfileRecord.UserName}");
-
             string result = generateEmails(templateHTML, keyPairs, emailList, "New Admin User", userProfileRecord.UserName);
-
-            Console.WriteLine($"generateEmails result: {result}");
-            Console.WriteLine($"=== COMPLETED sendNewAdminEmail ===");
-
         }
 
         public async Task sendGCEmailReportsAvailable(string UserID, int GeneralContractorID)

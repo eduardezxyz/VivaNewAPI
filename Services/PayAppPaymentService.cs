@@ -45,13 +45,11 @@ namespace NewVivaApi.Services
                 throw new Exception($"Exception: There is no defined Subcontractor for ID {_subContractorId}");
             }
 
-            Console.WriteLine($"Initialized PayAppPaymentService for PayApp ID {_payAppId} and Subcontractor ID {_subContractorId}");
             UpdateExistingOrCreateDefaultSubContractorPayAppPayment();
         }
 
         private void UpdateExistingOrCreateDefaultSubContractorPayAppPayment()
         {
-            Console.WriteLine($"Updating or creating PayAppPayment for PayApp ID {_payAppId} and Subcontractor ID {_subContractorId}");
             var defaultSubContractorPayment = _context.PayAppPayments
                 .FirstOrDefault(pap => pap.PayAppId == _payAppId &&
                                      pap.DeleteDt == null &&
@@ -59,7 +57,6 @@ namespace NewVivaApi.Services
 
             if (defaultSubContractorPayment != null)
             {
-                Console.WriteLine($"Found existing PayAppPayment for PayApp ID {_payAppId}, updating it.");
                 defaultSubContractorPayment.PaymentTypeId = 1; // TODO: Extract from JsonAttributes
                 //defaultSubContractorPayment.LastUpdateUser = GetCurrentUserName();
                 defaultSubContractorPayment.LastUpdateDt = DateTimeOffset.UtcNow;
@@ -82,11 +79,8 @@ namespace NewVivaApi.Services
                 LastUpdateUser = GetCurrentUserName(),
                 LastUpdateDt = DateTimeOffset.UtcNow
             };
-            Console.WriteLine($"Creating new PayAppPayment with DollarAmount: {defaultSubContractorPayment.DollarAmount}, SubcontractorId: {defaultSubContractorPayment.SubcontractorId}");
             _context.PayAppPayments.Add(defaultSubContractorPayment);
-            Console.WriteLine("Saving new PayAppPayment to context.");
             _context.SaveChanges();
-            Console.WriteLine("New PayAppPayment created successfully.");
             _subContractorPayAppPayment = defaultSubContractorPayment;
         }
 
@@ -129,7 +123,6 @@ namespace NewVivaApi.Services
         {
             try
             {
-                Console.WriteLine($"Reconciling total dollar amount for PayApp ID {_payAppId}");
                 decimal totalPADollarAmount = GetTotalDollarAmountBasedOnPayAppStatus();
 
                 var jointChecks = await _context.PayAppPayments
@@ -137,18 +130,15 @@ namespace NewVivaApi.Services
                                  pap.SubcontractorId == null && 
                                  pap.DeleteDt == null)
                     .ToListAsync();
-                Console.WriteLine($"Found {jointChecks.Count} joint checks for PayApp ID {_payAppId}");
                 foreach (var jointCheck in jointChecks)
                 {
                     totalPADollarAmount -= jointCheck.DollarAmount;
                 }
-                Console.WriteLine($"Total dollar amount after joint checks: {totalPADollarAmount}");
                 _subContractorPayAppPayment.DollarAmount = totalPADollarAmount;
                 _subContractorPayAppPayment.LastUpdateUser = GetCurrentUserName();
                 _subContractorPayAppPayment.LastUpdateDt = DateTimeOffset.UtcNow;
 
                 await _context.SaveChangesAsync();
-                Console.WriteLine($"Reconciled PayAppPayment for PayApp ID {_payAppId} with new DollarAmount: {totalPADollarAmount}");
                 _logger.LogInformation("Successfully reconciled PayApp {PayAppId} total amount to {Amount}", 
                     _payAppId, totalPADollarAmount);
             }
@@ -161,7 +151,6 @@ namespace NewVivaApi.Services
 
         private decimal GetTotalDollarAmountBasedOnPayAppStatus()
         {
-            Console.WriteLine($"Calculating total dollar amount for PayApp ID {_payAppId} with Status ID {_payApp.StatusId}");
             // Status 2 = Approved (based on original comment)
             if (_payApp.StatusId == 2)
             {
@@ -175,7 +164,6 @@ namespace NewVivaApi.Services
 
         private string GetCurrentUserName()
         {
-            Console.WriteLine("Retrieving current user name from HTTP context.");
             var httpContext = _httpContextAccessor.HttpContext;
             if (httpContext?.User?.Identity?.IsAuthenticated == true)
             {

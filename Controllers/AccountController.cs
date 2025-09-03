@@ -240,12 +240,8 @@ public class AccountController : ControllerBase
         extension.PasswordResetToken = null;
         await _identityDb.SaveChangesAsync();
 
-        Console.WriteLine($"About to reset password for user: {user.UserName}");
-        Console.WriteLine($"New password length: {data.NewPassword.Length}");
-
         // Reset the password
         var result = await _userManager.ResetPasswordAsync(user, resetToken, data.NewPassword);
-        Console.WriteLine($"Reset password result - Succeeded: {result.Succeeded}");
         if (!result.Succeeded)
         {
             Console.WriteLine("Reset password errors:");
@@ -255,7 +251,6 @@ public class AccountController : ControllerBase
             }
             return BadRequest("Failed to reset password: " + string.Join(", ", result.Errors.Select(e => e.Description)));
         }
-        Console.WriteLine("Password reset successful!");
 
         // Get user profile for email
         var profile = await _appDbcontext.UserProfiles.FindAsync(userId);
@@ -293,9 +288,6 @@ public class AccountController : ControllerBase
             //return FromIdentityError(result);
             return BadRequest("result not found");
         }
-
-        Console.WriteLine($"Result: {result}");
-
         await ClearPasswordResetFlag(model.UserID);
         return Ok();
     }
@@ -414,8 +406,6 @@ public class AccountController : ControllerBase
     [HttpPost("Register")]
     public async Task<ActionResult> RegisterSystemUser([FromBody] JsonElement data)
     {
-        Console.WriteLine("=== REGISTER SYSTEM USER ===");
-
         if (User.Identity.IsAuthenticated && IsServiceUser())
         {
             return BadRequest();
@@ -511,23 +501,15 @@ public class AccountController : ControllerBase
     // Helper methods
     private RegisterDataModel ExtractRegisterData(JsonElement data)
     {
-        Console.WriteLine("Extracting register data from JSON...");
         var firstName = GetJsonProperty(data, "FirstName");
         var lastName = GetJsonProperty(data, "LastName");
         var email = GetJsonProperty(data, "UserName");
         var phoneNumber = GetJsonProperty(data, "PhoneNumber");
-        Console.WriteLine($"Extracted: {firstName} {lastName}, Email: {email}, Phone: {phoneNumber}");
 
-        Console.WriteLine($"First name: {firstName}");
-        Console.WriteLine($"Last name: {lastName}");
-        Console.WriteLine($"Email: {email}");
-
-        Console.WriteLine($"Raw JSON data: {data}");
-        Console.WriteLine("Available properties:");
-        foreach (var property in data.EnumerateObject())
-        {
-            Console.WriteLine($"  Property: '{property.Name}' = {property.Value} (Type: {property.Value.ValueKind})");
-        }
+        // foreach (var property in data.EnumerateObject())
+        // {
+        //     Console.WriteLine($"  Property: '{property.Name}' = {property.Value} (Type: {property.Value.ValueKind})");
+        // }
 
         int companyId = 0;
         if (data.TryGetProperty("CompanyID", out var companyIdElement))
@@ -535,23 +517,17 @@ public class AccountController : ControllerBase
             if (companyIdElement.ValueKind == JsonValueKind.Number)
             {
                 companyId = companyIdElement.GetInt32();
-                Console.WriteLine($"companyId: {companyId}");
             }
             else if (companyIdElement.ValueKind == JsonValueKind.String)
             {
                 int.TryParse(companyIdElement.GetString(), out companyId);
-                Console.WriteLine($"(string) companyId: {companyId}");
             }
         }
         // Handle boolean properties properly
         bool isAdminTF = GetJsonBoolean(data, "isAdminTF");
-        Console.WriteLine($"Parsed isAdminTF: {isAdminTF}");
         bool isGCTF = GetJsonBoolean(data, "isGCTF");
-        Console.WriteLine($"Parsed isGCTF: {isGCTF}");
         bool isSCTF = GetJsonBoolean(data, "isSCTF");
-        Console.WriteLine($"Parsed isSCTF: {isSCTF}");
         bool gcApproveTF = GetJsonBoolean(data, "gcApproveTF");
-        Console.WriteLine($"Parsed gcApproveTF: {gcApproveTF}");
         return new RegisterDataModel
         {
             FirstName = firstName,
@@ -595,20 +571,17 @@ public class AccountController : ControllerBase
         // Detect hash format
         if (user.PasswordHash.StartsWith("AQAAAA")) // Modern ASP.NET Core format
         {
-            Console.WriteLine("Detected modern hash format");
+            //Console.WriteLine("Detected modern hash format");
             var modernHasher = new Microsoft.AspNetCore.Identity.PasswordHasher<ApplicationUser>();
             return (Microsoft.AspNet.Identity.PasswordVerificationResult)modernHasher.VerifyHashedPassword(user, user.PasswordHash, password);
         }
         else // Legacy format (usually base64 without the AQ prefix)
         {
-            Console.WriteLine("Detected legacy hash format");
+            //Console.WriteLine("Detected legacy hash format");
             var legacyHasher = new Microsoft.AspNet.Identity.PasswordHasher();
             var result = legacyHasher.VerifyHashedPassword(user.PasswordHash, password);
-            Console.WriteLine($"Legacy verification result: {result}");
-
             var verificationResult = result == Microsoft.AspNet.Identity.PasswordVerificationResult.Success ?
                 Microsoft.AspNet.Identity.PasswordVerificationResult.SuccessRehashNeeded : result;
-            Console.WriteLine($"Legacy verification result: {verificationResult}");
 
             return result;
         }

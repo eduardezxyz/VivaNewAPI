@@ -113,7 +113,6 @@ namespace NewVivaApi.Controllers.Odata
                 return BadRequest();
             }
             */
-            Console.WriteLine("STARTING POST");
             // Set ProjectName and SubcontractorName to empty or fetch from database
             if (string.IsNullOrEmpty(model.ProjectName))
             {
@@ -177,7 +176,6 @@ namespace NewVivaApi.Controllers.Odata
             {
                 var userId = User.Identity.GetUserId();
                 var genConId = model.SubcontractorId;
-                Console.WriteLine($"Before email services: userId = {userId},  SubConID = {scp.SubcontractorId}");
                 await _emailService.sendSCAddedToProject(userId, scp.SubcontractorId, scp.ProjectName);
                 return Created(scp);
             }
@@ -206,10 +204,6 @@ namespace NewVivaApi.Controllers.Odata
             if (dbModel == null)
                 return NotFound();
 
-            Console.WriteLine($"Patch SubcontractorProject with ID: {key}");
-            Console.WriteLine($"Patch Data: {JsonSerializer.Serialize(patch)}");
-            Console.WriteLine($"Current DB Model: SubcontractorId={dbModel.SubcontractorId}, ProjectId={dbModel.ProjectId}, DiscountPct={dbModel.DiscountPct}, StatusId={dbModel.StatusId}");
-
             var createdByUser = dbModel.CreatedByUser;
 
             // MANUAL MAPPING: Only update fields that are explicitly provided and not default values
@@ -217,21 +211,18 @@ namespace NewVivaApi.Controllers.Odata
             // Update DiscountPct if provided (allow 0.0 as a valid value)
             if (patch.DiscountPct != default(decimal))
             {
-                Console.WriteLine($"Updating DiscountPct from {dbModel.DiscountPct} to {patch.DiscountPct}");
                 dbModel.DiscountPct = patch.DiscountPct;
             }
 
             // Update StatusId if provided (don't update if 0, as that might be unintended)
             if (patch.StatusId != default(int))
             {
-                Console.WriteLine($"Updating StatusId from {dbModel.StatusId} to {patch.StatusId}");
                 dbModel.StatusId = patch.StatusId;
             }
 
             // Update JsonAttributes if provided
             if (!string.IsNullOrEmpty(patch.JsonAttributes))
             {
-                Console.WriteLine($"Updating JsonAttributes from '{dbModel.JsonAttributes}' to '{patch.JsonAttributes}'");
                 dbModel.JsonAttributes = patch.JsonAttributes;
             }
 
@@ -245,12 +236,10 @@ namespace NewVivaApi.Controllers.Odata
             dbModel.LastUpdateUser = User.Identity.Name;
             dbModel.CreatedByUser = createdByUser;
 
-            Console.WriteLine($"Final DB Model: SubcontractorId={dbModel.SubcontractorId}, ProjectId={dbModel.ProjectId}, DiscountPct={dbModel.DiscountPct}, StatusId={dbModel.StatusId}");
 
             try
             {
                 await _context.SaveChangesAsync();
-                Console.WriteLine("Successfully saved changes to database");
             }
             catch (DbUpdateException ex)
             {
@@ -278,7 +267,6 @@ namespace NewVivaApi.Controllers.Odata
                 };
             }
 
-            Console.WriteLine($"Updated SubcontractorProject: {JsonSerializer.Serialize(updatedViewModel)}");
             return Updated(updatedViewModel);
         }
 

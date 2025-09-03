@@ -58,11 +58,7 @@ namespace NewVivaApi.Models
                     ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256
                 };
 
-                Console.WriteLine($"PutObjectRequest: Bucket: {putRequest.BucketName}, Key: {putRequest.Key}, ContentType: {putRequest.ContentType}");
-
                 PutObjectResponse response = await _client.PutObjectAsync(putRequest);
-
-                Console.WriteLine($"File uploaded successfully to S3: {response.HttpStatusCode}");
                 
             }
             catch (AmazonS3Exception e)

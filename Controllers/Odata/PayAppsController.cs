@@ -136,17 +136,13 @@ namespace NewVivaApi.Controllers.OData
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] JsonElement data)
         {
-
-            // Add some debugging
             var userName = User.Identity?.Name ?? "Unknown";
-            Console.WriteLine($"Setting LastUpdateUser to: {userName}");
 
             // Replace the failing SqlQueryRaw code with this:
             var userExists = await _context.UserProfilesVws
                 .Where(u => u.UserName == userName)
                 .AnyAsync();
 
-            Console.WriteLine($"User {userName} exists in UserProfiles_vw: {userExists}");
             if (User.Identity.IsServiceUser())
             {
                 return BadRequest();
@@ -162,11 +158,9 @@ namespace NewVivaApi.Controllers.OData
             //     return BadRequest(ModelState);
             // }
 
-            Console.WriteLine($"data: {data}");
             try
             {
                 var extractedData = ExtractPayAppData(data);
-                Console.WriteLine($"Extracted PayApp data: VivaPayAppId={extractedData.VivaPayAppId}, SubcontractorProjectId={extractedData.SubcontractorProjectId}, StatusId={extractedData.StatusId}, RequestedAmount={extractedData.RequestedAmount}");
 
                 // Manual validation
                 var validationErrors = ValidatePayAppData(extractedData);
@@ -213,7 +207,6 @@ namespace NewVivaApi.Controllers.OData
 
                 var databaseModel = new PayApp();
                 _mapper.Map(model, databaseModel);
-                Console.WriteLine($"Creating PayApp with SubcontractorProjectId: {databaseModel.SubcontractorProjectId}");
 
                 databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
                 databaseModel.CreateDt = DateTimeOffset.UtcNow;
@@ -221,14 +214,10 @@ namespace NewVivaApi.Controllers.OData
                 databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
                 databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
 
-                Console.WriteLine($"databaseModel.LastUpdateUser: {databaseModel.LastUpdateUser}");
-
-                Console.WriteLine("about to add database model to context");
                 _context.PayApps.Add(databaseModel);
 
                 try
                 {
-                    Console.WriteLine("about to save changes to context");
                     await _context.SaveChangesAsync();
 
                 }
@@ -237,7 +226,6 @@ namespace NewVivaApi.Controllers.OData
                     var innerMessage = ex.InnerException?.Message ?? "No inner exception";
                     return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
                 }
-                Console.WriteLine("PayApp saved successfully");
                 model.PayAppId = databaseModel.PayAppId;
 
                 var resultModel = _mapper.Map<PayAppsVw>(databaseModel);
@@ -249,11 +237,9 @@ namespace NewVivaApi.Controllers.OData
                     var paymentService = new PayAppPaymentService(model.PayAppId, httpContextAccessor);
 
                     _logger.LogInformation("Starting payment reconciliation for PayApp {PayAppId}", model.PayAppId);
-                    Console.WriteLine($"Starting payment reconciliation for PayApp ID {model.PayAppId}");
 
                     await paymentService.ReconcileTotalDollarAmount();
 
-                    Console.WriteLine($"Reconciliation completed for PayApp ID {model.PayAppId}");
                     _logger.LogInformation("Payment reconciliation completed for PayApp {PayAppId}", model.PayAppId);
                 }
                 catch (Exception ex)
@@ -392,8 +378,6 @@ namespace NewVivaApi.Controllers.OData
         // Helper methods
         private PayAppDataModel ExtractPayAppData(JsonElement data)
         {
-            Console.WriteLine("Extracting PayApp data from JSON...");
-
             return new PayAppDataModel
             {
                 VivaPayAppId = GetJsonProperty(data, "VivaPayAppID"),

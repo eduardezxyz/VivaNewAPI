@@ -74,7 +74,6 @@ public class AuthService
             return null;
         }
 
-        Console.WriteLine($"User found: {user}");
         bool isValidPassword = false;
 
         // Try new .NET Core hasher first
@@ -85,7 +84,6 @@ public class AuthService
             modernResult == PasswordVerificationResult.SuccessRehashNeeded)
         {
             isValidPassword = true;
-            Console.WriteLine("modern password hasher used");
 
 
             // Update hash if needed
@@ -108,7 +106,6 @@ public class AuthService
                 // Migrate to new hash format
                 user.PasswordHash = modernHasher.HashPassword(user, model.Password);
                 await _identityDbContext.SaveChangesAsync();
-                Console.WriteLine("Migrated legacy password hash to modern format");
             }
         }
 
