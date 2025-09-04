@@ -263,7 +263,6 @@ namespace NewVivaApi.Controllers.OData
 
         }
 
-        [HttpPatch("{key}")]
         public async Task<IActionResult> Patch(int key, [FromBody] JsonElement patchData)
         {
             try

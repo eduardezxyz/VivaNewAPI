@@ -165,7 +165,6 @@ namespace NewVivaApi.Controllers.Odata
             return Created(model);
         }
 
-        [HttpPatch("{key}")]
         public async Task<IActionResult> Patch(int key, [FromBody] Delta<GeneralContractorsVw> patch)
         {
 

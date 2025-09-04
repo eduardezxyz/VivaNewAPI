@@ -149,16 +149,12 @@ namespace NewVivaApi.Controllers.Odata
             return Created(resultModel);
         }
 
-
-        [HttpPatch]
         public async Task<IActionResult> Patch(int key, [FromBody] PayAppHistoryVw patch)
         {
             return StatusCode(StatusCodes.Status501NotImplemented, "PATCH operation is not implemented.");
 
         }
 
-
-        [HttpDelete("{key}")]
         public async Task<IActionResult> Delete(int key)
         {
             return StatusCode(StatusCodes.Status501NotImplemented, "DELETE operation is not implemented.");

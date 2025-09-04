@@ -15,7 +15,7 @@ using System.Collections.Generic;
 
 namespace NewVivaApi.Controllers.OData
 {
-    //[Authorize]
+    [Authorize]
     public class PayAppPaymentsController : ODataController
     {
         private readonly AppDbContext _context;
@@ -105,6 +105,7 @@ namespace NewVivaApi.Controllers.OData
             return Ok(model);
         }
 
+        [HttpPost]
         public async Task<IActionResult> Post([FromBody] PayAppPaymentsVw model)
         {
             // if (User.Identity?.IsServiceUser() == true)

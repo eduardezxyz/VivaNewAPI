@@ -14,7 +14,7 @@ using Microsoft.AspNet.Identity;
 
 namespace NewVivaApi.Controllers.OData
 {
-    //[Authorize]
+    [Authorize]
     [Route("odata")]
     public class ServiceUserController : ControllerBase
     {
@@ -421,8 +421,6 @@ namespace NewVivaApi.Controllers.OData
             //     return BadRequest(ModelState);
             // }
 
-            var payAppId = model.PayAppId;
-
             var databaseModel = new PayAppPayment();
             _mapper.Map(model, databaseModel);
 
@@ -431,7 +429,7 @@ namespace NewVivaApi.Controllers.OData
             databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
             databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
-            databaseModel.PayAppId = payAppId;
+            databaseModel.PayAppId = model.PayAppId;
 
             var payApp = await _context.PayApps
                 .FirstOrDefaultAsync(gc => gc.PayAppId == databaseModel.PayAppId);

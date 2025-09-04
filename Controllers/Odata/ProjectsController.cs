@@ -181,7 +181,6 @@ public class ProjectsController : ODataController
         return Created(resultModel);
     }
 
-    [HttpPatch]
     public async Task<ActionResult<ProjectsVw>> Patch(int key, [FromBody] ProjectsVw patch)
     {
         var permCheck = GetSecureModel().Any(s => s.ProjectId == key);

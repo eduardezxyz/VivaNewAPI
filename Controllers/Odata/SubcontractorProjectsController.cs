@@ -22,7 +22,7 @@ using NewVivaApi.Extensions;
 
 namespace NewVivaApi.Controllers.Odata
 {
-    // [Authorize]
+    [Authorize]
     public class SubcontractorProjectsController : ODataController
     {
         private readonly AppDbContext _context;
@@ -185,9 +185,6 @@ namespace NewVivaApi.Controllers.Odata
             return StatusCode(500, "Created record but couldn't retrieve it");
         }
 
-
-
-        [HttpPatch]
         public async Task<IActionResult> Patch(int key, [FromBody] SubcontractorProjectsVw patch)
         {
             // Temporarily comment out auth check

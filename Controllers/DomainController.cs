@@ -23,66 +23,30 @@ namespace NewVivaApi.Controllers
             _context = context;
         }
 
+    [HttpGet("{name}")]
+    public async Task<IActionResult> Get(string name)
+    {
+        var generalContractor = await _context.GeneralContractors
+            .FirstOrDefaultAsync(f => f.DommainName == name);
 
-        // // COMMENT THIS WHEN TESTING SWAGGER
-        public async Task<IActionResult> Get(string name)
+        if (generalContractor == null)
         {
-            // TODO: Replace with your real identity check
-            // if (User?.Identity?.IsAuthenticated == true && User.Identity.Name == "ServiceUser")
-            // {
-            //     return BadRequest();
-            // }
-
-            var generalContractor = await _context.GeneralContractors
-                .FirstOrDefaultAsync(f => f.DommainName == name);
-
-            if (generalContractor == null)
-            {
-                return Ok(); // Returns 200 with empty body
-            }
-
-            var jsonAttributes = JObject.Parse(generalContractor.JsonAttributes);
-
-            var brandingModel = new brandingModel
-            {
-                GCName = generalContractor.GeneralContractorName,
-                LogoImage = generalContractor.LogoImage,
-                PrimaryColor = jsonAttributes["PrimaryColor"]?.ToString(),
-                NavColor = jsonAttributes["NavColor"]?.ToString()
-            };
-
-            return Ok(brandingModel);
+            return Ok(); // Returns 200 with empty body
         }
 
-        [HttpGet("GetDomainInfo/{name}")]
-        public async Task<IActionResult> GetDomainInfo(string name)
+        var jsonAttributes = JObject.Parse(generalContractor.JsonAttributes);
+
+        var brandingModel = new brandingModel
         {
-            // TODO: Replace with your real identity check
-            // if (User?.Identity?.IsAuthenticated == true && User.Identity.Name == "ServiceUser")
-            // {
-            //     return BadRequest();
-            // }
+            GCName = generalContractor.GeneralContractorName,
+            LogoImage = generalContractor.LogoImage,
+            PrimaryColor = jsonAttributes["PrimaryColor"]?.ToString(),
+            NavColor = jsonAttributes["NavColor"]?.ToString()
+        };
 
-            var generalContractor = await _context.GeneralContractors
-                .FirstOrDefaultAsync(f => f.DommainName == name);
+        return Ok(brandingModel);
+    }
 
-            if (generalContractor == null)
-            {
-                return Ok(); // Returns 200 with empty body
-            }
-
-            var jsonAttributes = JObject.Parse(generalContractor.JsonAttributes);
-
-            var brandingModel = new brandingModel
-            {
-                GCName = generalContractor.GeneralContractorName,
-                LogoImage = generalContractor.LogoImage,
-                PrimaryColor = jsonAttributes["PrimaryColor"]?.ToString(),
-                NavColor = jsonAttributes["NavColor"]?.ToString()
-            };
-
-            return Ok(brandingModel);
-        }
 
         [AllowAnonymous] // Equivalent to OverrideAuthentication
         [HttpGet("GetImage/{id}")]

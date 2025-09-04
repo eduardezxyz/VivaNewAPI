@@ -22,7 +22,7 @@ using Microsoft.AspNet.Identity;
 
 namespace NewVivaApi.Controllers
 {
-    // [Authorize]
+    [Authorize]
     public class UserProfilesController : ODataController
     {
         private readonly AppDbContext _context;
@@ -186,7 +186,6 @@ namespace NewVivaApi.Controllers
         //     });
         // }
 
-        [HttpPatch("{key}")]
         public async Task<IActionResult> Patch(string key, [FromBody] JsonElement data)
         {
             // Temporarily comment out auth check

@@ -269,7 +269,6 @@ namespace NewVivaApi.Controllers.Odata
 
         }
 
-        [HttpPatch]
         public async Task<IActionResult> Patch(int key, [FromBody] Delta<SubcontractorsVw> patch)
         {
             if (User.Identity?.IsServiceUser() == true)
