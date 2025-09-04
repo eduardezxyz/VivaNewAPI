@@ -81,7 +81,7 @@ public class RegisterSystemUserModel
         var userProfile = new UserProfile
         {
             FirstName = this.FirstName,
-            LastName = this.LastName, 
+            LastName = this.LastName,
             PhoneNumber = this.PhoneNumber,
             UserName = this.UserName,
             UserId = _userId,
@@ -96,6 +96,13 @@ public class RegisterSystemUserModel
 
     private async Task CreateAspNetUserAsync()
     {
+        var rbm = new RegisterBindingModel
+        {
+            Email = this.UserName,
+            Password = this.Password,
+            ConfirmPassword = this.ConfirmPassword
+        };
+
         var user = new ApplicationUser
         {
             UserName = this.UserName,
@@ -118,7 +125,7 @@ public class RegisterSystemUserModel
         var result = await _userManager.CreateAsync(user, this.Password);
         if (!result.Succeeded)
         {
-            throw new UserCreationException(result);
+            throw new UserCreationException(rbm, result);
         }
 
         _userId = user.Id;
@@ -176,29 +183,29 @@ public class RegisterSystemUserModel
             throw new InvalidOperationException("User couldn't be assigned a role. No match was found.");
         }
     }
-    
+
 
     private async Task SendEmailNotificationAsync(string creatorUserName)
+    {
+        if (this.isAdminTF)
         {
-            if (this.isAdminTF)
-            {
-                // Send Admin Email
-                await _emailService.sendNewAdminEmail(this._userId, this.Password);
-                await _emailService.sendAdminEmailNewAdmin(this._userId);
-            }
-            else if (this.isGCTF)
-            {
-                // Send GC Email
-                await _emailService.sendNewGeneralContractorEmail(this._userId, this.CompanyID, this.Password);
-                await _emailService.sendAdminEmailNewGeneralContractorUser(this._userId, this.CompanyID, creatorUserName);
-            }
-            else if (this.isSCTF)
-            {
-                // Send SC Email
-                await _emailService.sendNewSubcontractorEmail(this._userId, this.CompanyID, this.Password);
-                await _emailService.sendAdminEmailNewSubcontractorUser(this._userId, this.CompanyID, creatorUserName);
-            }
+            // Send Admin Email
+            await _emailService.sendNewAdminEmail(this._userId, this.Password);
+            await _emailService.sendAdminEmailNewAdmin(this._userId);
         }
+        else if (this.isGCTF)
+        {
+            // Send GC Email
+            await _emailService.sendNewGeneralContractorEmail(this._userId, this.CompanyID, this.Password);
+            await _emailService.sendAdminEmailNewGeneralContractorUser(this._userId, this.CompanyID, creatorUserName);
+        }
+        else if (this.isSCTF)
+        {
+            // Send SC Email
+            await _emailService.sendNewSubcontractorEmail(this._userId, this.CompanyID, this.Password);
+            await _emailService.sendAdminEmailNewSubcontractorUser(this._userId, this.CompanyID, creatorUserName);
+        }
+    }
 
 
 }

@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNet.Identity;
 using NewVivaApi.Services;
+using Microsoft.AspNetCore.OData.Query.Validator;
 
 namespace NewVivaApi.Controllers.Odata
 {
@@ -34,6 +35,7 @@ namespace NewVivaApi.Controllers.Odata
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly EmailService _emailService;
         private readonly FinancialSecurityService _financialSecurityService;
+        private readonly ODataValidationSettings _validationSettings;
 
         public GeneralContractorsController(
             AppDbContext context,
@@ -41,7 +43,8 @@ namespace NewVivaApi.Controllers.Odata
             EmailService emailService,
             IHttpContextAccessor httpContextAccessor,
             Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager,
-            FinancialSecurityService financialSecurityService
+            FinancialSecurityService financialSecurityService,
+            ODataValidationSettings validationSettings
             )
         {
             _context = context;
@@ -50,6 +53,7 @@ namespace NewVivaApi.Controllers.Odata
             _userManager = userManager;
             _httpContextAccessor = httpContextAccessor;
             _financialSecurityService = financialSecurityService;
+            _validationSettings = validationSettings;
         }
 
         [EnableQuery]
@@ -83,28 +87,43 @@ namespace NewVivaApi.Controllers.Odata
 
         [EnableQuery]
         [HttpGet]
-        public ActionResult Get()
+        public ActionResult Get(ODataQueryOptions<GeneralContractorsVw> queryOptions)
         {
             if (User.Identity.IsServiceUser())
             {
                 return BadRequest();
             }
 
-            var model = GetSecureModel();
+            try
+            {
+                queryOptions.Validate(_validationSettings);
 
-            if (model == null)
-                return BadRequest("No records found.");
+            }
+            catch (ODataException ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
-            return Ok(model);
+            return Ok(GetSecureModel());
         }
 
         [EnableQuery]
-        public ActionResult<GeneralContractorsVw> Get([FromRoute] int key)
+        public ActionResult<GeneralContractorsVw> Get([FromRoute] int key, ODataQueryOptions<GeneralContractorsVw> queryOptions)
         {
             if (User.Identity.IsServiceUser())
             {
                 return BadRequest();
             }
+
+            try
+            {
+                queryOptions.Validate(_validationSettings);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+
             var model = GetSecureModel().FirstOrDefault(g => g.GeneralContractorId == key);
             if (model == null)
                 return NotFound();
@@ -134,6 +153,12 @@ namespace NewVivaApi.Controllers.Odata
             dbEntity.CreatedByUser = User.Identity?.Name; ;
             dbEntity.LastUpdateUser = User.Identity?.Name;
 
+            TryValidateModel(dbEntity);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             _context.GeneralContractors.Add(dbEntity);
 
             try
@@ -142,8 +167,8 @@ namespace NewVivaApi.Controllers.Odata
             }
             catch (DbUpdateException ex)
             {
-                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             model.GeneralContractorId = dbEntity.GeneralContractorId;
@@ -198,8 +223,11 @@ namespace NewVivaApi.Controllers.Odata
             databaseModel.DommainName = model.DommainName;
             databaseModel.CreatedByUser = createdByUser;
 
-            // if (!TryValidateModel(dbEntity))
-            //     return BadRequest(ModelState);
+            TryValidateModel(databaseModel);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
             try
             {
@@ -207,8 +235,8 @@ namespace NewVivaApi.Controllers.Odata
             }
             catch (DbUpdateException ex)
             {
-                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             var updatedModel = await _context.GeneralContractorsVws.FirstOrDefaultAsync(g => g.GeneralContractorId == key);
@@ -221,12 +249,16 @@ namespace NewVivaApi.Controllers.Odata
         [HttpDelete]
         public async Task<IActionResult> Delete([FromRoute] int key)
         {
-            var dbEntity = await _context.GeneralContractors.FindAsync(key);
 
+            if (User.Identity.IsServiceUser())
+            {
+                return BadRequest();
+            }
+
+            var dbEntity = await _context.GeneralContractors.FindAsync(key);
             if (dbEntity == null)
             {
                 Console.WriteLine("Entity not found for deletion.");
-                Console.WriteLine($"Key: {key}");
                 return NotFound();
             }
 
@@ -242,8 +274,8 @@ namespace NewVivaApi.Controllers.Odata
             }
             catch (DbUpdateException ex)
             {
-                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             return NoContent();

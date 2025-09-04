@@ -14,6 +14,8 @@ using System.Collections.Generic;
 using NewVivaApi.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
+using Microsoft.OData;
+using Microsoft.AspNetCore.OData.Query.Validator;
 namespace VivaPayAppAPI.Controllers.OData;
 
 
@@ -22,11 +24,17 @@ public class ProjectsController : ODataController
 {
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
+    private readonly ODataValidationSettings _validationSettings;
 
-    public ProjectsController(AppDbContext context, IMapper mapper)
+
+    public ProjectsController(AppDbContext context,
+    IMapper mapper,
+    ODataValidationSettings validationSettings)
     {
         _context = context;
         _mapper = mapper;
+        _validationSettings = validationSettings;
+
     }
 
     private IQueryable<ProjectsVw> GetSecureModel()
@@ -72,28 +80,41 @@ public class ProjectsController : ODataController
 
     [EnableQuery]
     [HttpGet]
-    public ActionResult Get()
+    public ActionResult Get(ODataQueryOptions<ProjectsVw> queryOptions)
     {
         if (User.Identity.IsServiceUser())
         {
             return BadRequest();
         }
 
-        var model = GetSecureModel();
-        if (model == null)
+        try
         {
-            return BadRequest("Access denied or no data available");
+            queryOptions.Validate(_validationSettings);
+
+        }
+        catch (ODataException ex)
+        {
+            return BadRequest(ex.Message);
         }
 
-        return Ok(model);
+        return Ok(GetSecureModel());
     }
 
     [EnableQuery]
-    public ActionResult<ProjectsVw> Get(int key)
+    public ActionResult<ProjectsVw> Get(int key, ODataQueryOptions<ProjectsVw> queryOptions)
     {
         if (User.Identity.IsServiceUser())
         {
             return BadRequest();
+        }
+
+        try
+        {
+            queryOptions.Validate(_validationSettings);
+        }
+        catch (Exception e)
+        {
+            return BadRequest(e.Message);
         }
 
         var model = GetSecureModel()?.FirstOrDefault(s => s.ProjectId == key);
@@ -121,15 +142,30 @@ public class ProjectsController : ODataController
     // }
 
     [HttpPost]
-    public async Task<ActionResult<ProjectsVw>> Post([FromBody] ProjectsVw model)
+    public async Task<ActionResult<ProjectsVw>> Post([FromBody] ProjectsDTO dto)
     {
-        //Console.WriteLine($"Incoming GeneralContractorID: {model.GeneralContractorId}");
-
         if (User.Identity.IsServiceUser())
         {
             Console.WriteLine("User.Identity.IsServiceUser() Not working");
             return BadRequest();
         }
+
+        var model = ConvertDtoToModel(dto);
+
+        // Validate the incoming model first
+        if (model == null)
+        {
+            Console.WriteLine("Incoming model is null");
+            return BadRequest("Model cannot be null");
+        }
+
+        // Check if AutoMapper is properly configured and available
+        if (_mapper == null)
+        {
+            Console.WriteLine("AutoMapper is null - DI issue");
+            return BadRequest("Mapping service unavailable");
+        }
+
 
         // if (!User.Identity.IsVivaUser())
         // {
@@ -140,27 +176,33 @@ public class ProjectsController : ODataController
         //     }
         // }
 
-        if (!ModelState.IsValid)
-        {
-            Console.WriteLine("!ModelState.IsValid (86) Not working");
-            return BadRequest(ModelState);
-        }
+        // if (!ModelState.IsValid)
+        // {
+        //     Console.WriteLine("!ModelState.IsValid (86) Not working");
+        //     return BadRequest(ModelState);
+        // }
+        Console.WriteLine($"Incoming GeneralContractorID: {model.GeneralContractorId}");
 
         var existingContractors = await _context.GeneralContractors.Select(gc => gc.GeneralContractorId).ToListAsync();
-        //Console.WriteLine($"Existing contractor IDs: {string.Join(", ", existingContractors)}");
+        Console.WriteLine($"Existing contractor IDs: {string.Join(", ", existingContractors)}");
 
         var dbModel = _mapper.Map<Project>(model);
+
+        if (dbModel == null)
+        {
+            Console.WriteLine("AutoMapper returned null - check mapping configuration");
+            return BadRequest("Failed to map model");
+        }
+
+        Console.WriteLine($"Mapping successful. DbModel: ProjectName={dbModel.ProjectName}, GeneralContractorId={dbModel.GeneralContractorId}");
 
         dbModel.CreateDt = DateTime.UtcNow;
         dbModel.LastUpdateDt = DateTime.UtcNow;
         dbModel.LastUpdateUser = User.Identity.Name;
         dbModel.CreatedByUser = User.Identity.Name;
 
-        // Validate(databaseModel);
-        // if (!ModelState.IsValid)
-        // {
-        //     return BadRequest(ModelState);
-        // }
+        TryValidateModel(dbModel);
+        Console.WriteLine($"After TryValidateModel: ModelState.IsValid = " + ModelState.IsValid);
 
         _context.Projects.Add(dbModel);
 
@@ -170,10 +212,8 @@ public class ProjectsController : ODataController
         }
         catch (DbUpdateException e)
         {
-            // Return a more specific error message based on the exception
-            if (e.InnerException is SqlException sqlEx)
-                Console.WriteLine($"Error: {e}");
-            return BadRequest("An error occurred while saving the project");
+            var exceptionFormatter = new DbEntityValidationExceptionFormatter(e);
+            return BadRequest(exceptionFormatter.Message);
         }
 
         var resultModel = _mapper.Map<ProjectsVw>(dbModel);
@@ -202,6 +242,12 @@ public class ProjectsController : ODataController
         dbModel.LastUpdateUser = User.Identity.Name;
         dbModel.CreatedByUser = createdByUser;
 
+        TryValidateModel(dbModel);
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
         await _context.SaveChangesAsync();
 
         var updatedViewModel = _mapper.Map<ProjectsVw>(dbModel);
@@ -229,5 +275,38 @@ public class ProjectsController : ODataController
         return Ok();
     }
 
+    // Helper method to convert DTO to your domain model
+    private ProjectsVw ConvertDtoToModel(ProjectsDTO dto)
+    {
+        // Parse UnpaidBalance from string to decimal
+        decimal? unpaidBalance = null;
+        if (!string.IsNullOrEmpty(dto.UnpaidBalance) && decimal.TryParse(dto.UnpaidBalance, out decimal balance))
+        {
+            unpaidBalance = balance;
+        }
+
+        return new ProjectsVw
+        {
+            ProjectName = dto.ProjectName,
+            GeneralContractorId = dto.GeneralContractorID,  // Map ID to Id
+            StartDt = (DateTimeOffset)dto.StartDT,                          // Map DT to Dt
+            StatusId = dto.StatusID,                        // Map ID to Id
+            UnpaidBalance = unpaidBalance,
+            VivaProjectId = dto.VivaProjectID               // Map ID to Id
+        };
+    }
+
+}
+
+
+// Create this DTO class that matches your JSON payload exactly
+public class ProjectsDTO
+{
+    public string ProjectName { get; set; } = string.Empty;
+    public int GeneralContractorID { get; set; }  // Matches JSON exactly
+    public DateTime? StartDT { get; set; }        // Matches JSON exactly  
+    public int StatusID { get; set; }             // Matches JSON exactly
+    public string UnpaidBalance { get; set; } = string.Empty; // Handle as string initially
+    public string VivaProjectID { get; set; } = string.Empty; // Matches JSON exactly
 }
 

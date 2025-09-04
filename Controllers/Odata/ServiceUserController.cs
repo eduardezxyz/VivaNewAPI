@@ -20,7 +20,7 @@ namespace NewVivaApi.Controllers.OData
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
-        //private readonly FinancialSecurityService _financialSecurityService;
+        private readonly FinancialSecurityService _financialSecurityService;
         private readonly EmailService _emailService;
         //private readonly SubdomainService _subdomainService;
         private readonly ILogger<ServiceUserController> _logger;
@@ -28,14 +28,14 @@ namespace NewVivaApi.Controllers.OData
         public ServiceUserController(
             AppDbContext context,
             IMapper mapper,
-            //FinancialSecurityService financialSecurityService,
+            FinancialSecurityService financialSecurityService,
             EmailService emailService,
             //SubdomainService subdomainService,
             ILogger<ServiceUserController> logger)
         {
             _context = context;
             _mapper = mapper;
-            //_financialSecurityService = financialSecurityService;
+            _financialSecurityService = financialSecurityService;
             _emailService = emailService;
             //_subdomainService = subdomainService;
             _logger = logger;
@@ -53,27 +53,28 @@ namespace NewVivaApi.Controllers.OData
             _mapper.Map(model, databaseModel);
 
             // Encrypt JsonAttributes
-            //string protectedJsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
-            //databaseModel.JsonAttributes = protectedJsonAttributes;
+            string protectedJsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
+            databaseModel.JsonAttributes = protectedJsonAttributes;
+
             databaseModel.CreateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
             databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
 
-            // if (!TryValidateModel(databaseModel))
-            // {
-            //     return BadRequest(ModelState);
-            // }
+            if (!TryValidateModel(databaseModel))
+            {
+                return BadRequest(ModelState);
+            }
 
             _context.Subcontractors.Add(databaseModel);
             try
             {
                 await _context.SaveChangesAsync();
             }
-            catch (Exception e)
+            catch (DbUpdateException ex)
             {
-                _logger.LogError(e, "Error creating Subcontractor");
-                return BadRequest($"Database error: {e.Message}. Inner: {e.InnerException?.Message}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             model.SubcontractorId = databaseModel.SubcontractorId;
@@ -90,12 +91,12 @@ namespace NewVivaApi.Controllers.OData
             // }
 
             // Encryption
-            //string protectedJsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
+            string protectedJsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
 
             var databaseModel = new GeneralContractor();
             _mapper.Map(model, databaseModel);
 
-            //databaseModel.JsonAttributes = protectedJsonAttributes;
+            databaseModel.JsonAttributes = protectedJsonAttributes;
             databaseModel.CreateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
@@ -103,20 +104,20 @@ namespace NewVivaApi.Controllers.OData
             databaseModel.DommainName = model.DommainName;
             databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
 
-            // if (!TryValidateModel(databaseModel))
-            // {
-            //     return BadRequest(ModelState);
-            // }
+            if (!TryValidateModel(databaseModel))
+            {
+                return BadRequest(ModelState);
+            }
 
             _context.GeneralContractors.Add(databaseModel);
             try
             {
                 await _context.SaveChangesAsync();
             }
-            catch (Exception e)
+            catch (DbUpdateException ex)
             {
-                _logger.LogError(e, "Error creating GeneralContractor");
-                return BadRequest($"Database error: {e.Message}. Inner: {e.InnerException?.Message}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             model.GeneralContractorId = databaseModel.GeneralContractorId;
@@ -198,11 +199,10 @@ namespace NewVivaApi.Controllers.OData
             {
                 await _context.SaveChangesAsync();
             }
-            catch (Exception e)
+            catch (DbUpdateException ex)
             {
-                _logger.LogError(e, "Error creating Project");
-                Console.WriteLine($"Database error: {e.Message}. Inner: {e.InnerException?.Message}");
-                return BadRequest($"Database error: {e.Message}. Inner: {e.InnerException?.Message}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             model.ProjectId = databaseModel.ProjectId;
@@ -284,10 +284,10 @@ namespace NewVivaApi.Controllers.OData
             {
                 await _context.SaveChangesAsync();
             }
-            catch (Exception e)
+            catch (DbUpdateException ex)
             {
-                _logger.LogError(e, "Error creating SubcontractorProject");
-                return BadRequest($"Database error: {e.Message}. Inner: {e.InnerException?.Message}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             model.SubcontractorProjectId = databaseModel.SubcontractorProjectId;
@@ -315,7 +315,7 @@ namespace NewVivaApi.Controllers.OData
             var databaseModel = new PayApp();
             _mapper.Map(model, databaseModel);
 
-            //databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
+            databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(model.JsonAttributes);
             databaseModel.CreateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
@@ -333,11 +333,11 @@ namespace NewVivaApi.Controllers.OData
                 return BadRequest("Approved Amount must be null when creating a Pay App");
             }
 
-            // Validate(databaseModel);
-            // if (!TryValidateModel(databaseModel))
-            // {
-            //     return BadRequest(ModelState);
-            // }
+            TryValidateModel(databaseModel);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
             // var subcontractorProjectExists = await _context.SubcontractorProjects
             //     .AnyAsync(p => p.SubcontractorProjectId == databaseModel.SubcontractorProjectId && 
@@ -364,10 +364,10 @@ namespace NewVivaApi.Controllers.OData
             {
                 await _context.SaveChangesAsync();
             }
-            catch (Exception e)
+            catch (DbUpdateException ex)
             {
-                _logger.LogError(e, "Error creating PayApp");
-                return BadRequest($"Database error: {e.Message}. Inner: {e.InnerException?.Message}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             model.PayAppId = databaseModel.PayAppId;
@@ -417,7 +417,7 @@ namespace NewVivaApi.Controllers.OData
             var databaseModel = new PayAppPayment();
             _mapper.Map(model, databaseModel);
 
-            //databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(databaseModel.JsonAttributes);
+            databaseModel.JsonAttributes = _financialSecurityService.ProtectJsonAttributes(databaseModel.JsonAttributes);
             databaseModel.CreateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateDt = DateTimeOffset.UtcNow;
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
@@ -454,10 +454,10 @@ namespace NewVivaApi.Controllers.OData
             {
                 await _context.SaveChangesAsync();
             }
-            catch (Exception e)
+            catch (DbUpdateException ex)
             {
-                _logger.LogError(e, "Error creating PayAppPayment");
-                return BadRequest($"Database error: {e.Message}. Inner: {e.InnerException?.Message}");
+                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
             }
 
             model.PaymentId = databaseModel.PaymentId;
@@ -534,10 +534,10 @@ namespace NewVivaApi.Controllers.OData
             {
                 await _context.SaveChangesAsync();
             }
-            catch (Exception e)
+            catch (DbUpdateException ex)
             {
-                _logger.LogError(e, "Error updating PayApp {PayAppId}", model.PayAppId);
-                return BadRequest($"Database error: {e.Message}");
+                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
             }
 
             // Reconcile payment amounts

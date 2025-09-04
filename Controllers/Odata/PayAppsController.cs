@@ -34,6 +34,7 @@ using NewVivaApi.Authentication.Models; // ApplicationUser, Role
 //using NewVivaApi.Models.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.OData.Query.Validator;
 // using VivaPayAppAPI.Providers; // if you still have helper classes
 // using VivaPayAppAPI.Results;
 
@@ -51,12 +52,13 @@ namespace NewVivaApi.Controllers.OData
         private readonly ILogger<PayAppsController> _logger;
         private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
         //private readonly IdentityDbContext _identityDbContext;
-
+        private readonly ODataValidationSettings _validationSettings;
 
         public PayAppsController(AppDbContext context, ILogger<PayAppsController> logger,
         IdentityDbContext identityDbContext,
         EmailService emailService, IMapper mapper,
         Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager,
+        ODataValidationSettings validationSettings,
         FinancialSecurityService financialSecurityService)
         {
             _context = context;
@@ -66,6 +68,7 @@ namespace NewVivaApi.Controllers.OData
             _logger = logger;
             _emailService = emailService;
             _userManager = userManager;
+            _validationSettings = validationSettings;
         }
 
         private IQueryable<PayAppsVw> GetSecureModel()
@@ -103,26 +106,42 @@ namespace NewVivaApi.Controllers.OData
 
         [EnableQuery]
         [HttpGet]
-        public ActionResult Get()
+        public ActionResult Get(ODataQueryOptions<PayAppsVw> queryOptions)
+        {
+            if (User.Identity.IsServiceUser())
+            {
+                return BadRequest();
+            }
+
+            try
+            {
+                queryOptions.Validate(_validationSettings);
+
+            }
+            catch (ODataException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+
+            return Ok(GetSecureModel());
+        }
+
+
+        [EnableQuery]
+        public ActionResult<PayAppsVw> Get([FromRoute] int key, ODataQueryOptions<PayAppsVw> queryOptions)
         {
             if (User.Identity.IsServiceUser())
             {
                 return null;
             }
-            var model = GetSecureModel();
 
-            if (!model.Any())
-                return BadRequest("No records found.");
-            return Ok(model);
-        }
-
-
-        [EnableQuery]
-        public ActionResult<PayAppsVw> Get([FromRoute] int key)
-        {
-            if (User.Identity.IsServiceUser())
+            try
             {
-                return null;
+                queryOptions.Validate(_validationSettings);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
             }
 
             var model = GetSecureModel().FirstOrDefault(p => p.PayAppId == key);
@@ -259,10 +278,10 @@ namespace NewVivaApi.Controllers.OData
                 return Created($"PayApps({model.PayAppId})", model);
 
             }
-            catch (Exception ex)
+            catch (DbUpdateException ex)
             {
-                Console.WriteLine($"PayApp creation error: {ex.Message}");
-                return StatusCode(500, new { Type = "error", Message = "Internal server error" });
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
         }

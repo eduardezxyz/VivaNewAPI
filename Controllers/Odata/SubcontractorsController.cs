@@ -20,6 +20,7 @@ using NewVivaApi.Extensions;
 using Newtonsoft.Json.Linq;
 using NewVivaApi.Services;
 using Microsoft.AspNet.Identity;
+using Microsoft.AspNetCore.OData.Query.Validator;
 
 namespace NewVivaApi.Controllers.Odata
 {
@@ -32,6 +33,8 @@ namespace NewVivaApi.Controllers.Odata
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly EmailService _emailService;
         private readonly FinancialSecurityService _financialSecurityService;
+        private readonly ODataValidationSettings _validationSettings;
+
 
         public SubcontractorsController(
             AppDbContext context,
@@ -39,8 +42,9 @@ namespace NewVivaApi.Controllers.Odata
             EmailService emailService,
             IHttpContextAccessor httpContextAccessor,
             Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager,
-            FinancialSecurityService financialSecurityService
-            )
+            FinancialSecurityService financialSecurityService,
+            ODataValidationSettings validationSettings
+)
         {
             _context = context;
             _mapper = mapper;
@@ -48,6 +52,8 @@ namespace NewVivaApi.Controllers.Odata
             _emailService = emailService;
             _httpContextAccessor = httpContextAccessor;
             _financialSecurityService = financialSecurityService;
+            _validationSettings = validationSettings;
+
         }
         private IQueryable<SubcontractorsVw> GetSecureModel()
         {
@@ -91,27 +97,40 @@ namespace NewVivaApi.Controllers.Odata
         }
 
         [EnableQuery]
-        public ActionResult Get()
+        public ActionResult Get(ODataQueryOptions<SubcontractorsVw> queryOptions)
+        {
+            if (User.Identity.IsServiceUser())
+            {
+                return BadRequest();
+            }
+            try
+            {
+                queryOptions.Validate(_validationSettings);
+
+            }
+            catch (ODataException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+
+            return Ok(GetSecureModel());
+        }
+
+        [EnableQuery]
+        public ActionResult<SubcontractorsVw> Get([FromRoute] int key, ODataQueryOptions<SubcontractorsVw> queryOptions)
         {
             if (User.Identity.IsServiceUser())
             {
                 return BadRequest();
             }
 
-            var model = GetSecureModel();
-
-            if (model == null)
-                return BadRequest();
-
-            return Ok(model);
-        }
-
-        [EnableQuery]
-        public ActionResult<SubcontractorsVw> Get([FromRoute] int key)
-        {
-            if (User.Identity.IsServiceUser())
+            try
             {
-                return BadRequest();
+                queryOptions.Validate(_validationSettings);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
             }
 
             var model = GetSecureModel()
@@ -127,10 +146,10 @@ namespace NewVivaApi.Controllers.Odata
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] SubcontractorsVw model)
         {
-            /*
+            
             if (User.Identity.IsServiceUser())
                 return BadRequest();
-            */
+
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
@@ -150,8 +169,8 @@ namespace NewVivaApi.Controllers.Odata
             }
             catch (DbUpdateException ex)
             {
-                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             model.SubcontractorId = dbModel.SubcontractorId;
@@ -292,8 +311,8 @@ namespace NewVivaApi.Controllers.Odata
             }
             catch (DbUpdateException ex)
             {
-                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             var updatedViewModel = _mapper.Map<SubcontractorsVw>(dbModel);
@@ -320,8 +339,8 @@ namespace NewVivaApi.Controllers.Odata
             }
             catch (DbUpdateException ex)
             {
-                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             return NoContent();

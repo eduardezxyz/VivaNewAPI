@@ -15,6 +15,8 @@ using NewVivaApi.Data;
 using NewVivaApi.Models;
 using System.Text.Json;
 using AutoMapper;
+using NewVivaApi.Extensions;
+using Microsoft.AspNetCore.OData.Query.Validator;
 
 namespace NewVivaApi.Controllers.Odata
 {
@@ -23,18 +25,20 @@ namespace NewVivaApi.Controllers.Odata
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
+        private readonly ODataValidationSettings _validationSettings;
 
-        public PayAppHistoryController(AppDbContext context, IMapper mapper)
+
+        public PayAppHistoryController(AppDbContext context, IMapper mapper, ODataValidationSettings validationSettings)
         {
             _context = context;
             _mapper = mapper;
+            _validationSettings = validationSettings;
+
         }
 
-        private IQueryable<PayAppHistoryVw> GetSecureModel()
+
+        private IQueryable<PayAppHistoryVw>? GetSecureModel()
         {
-            /*
-            IQueryable<PayAppHistoryVw> model;
-            
             if (User.Identity.IsServiceUser())
             {
                 return null;
@@ -42,61 +46,67 @@ namespace NewVivaApi.Controllers.Odata
 
             if (User.Identity.IsVivaUser())
             {
-                model = _context.PayAppHistoryVws;
+                return _context.PayAppHistoryVws;
             }
             else if (User.Identity.IsGeneralContractor())
             {
-                int? currentGeneralContractorId = User.Identity.GetGeneralContractorID();
-                model = _context.PayAppHistoryVws.Where(payApp =>
+                int? currentGeneralContractorId = User.Identity.GetGeneralContractorId();
+                return _context.PayAppHistoryVws.Where(payApp =>
                     payApp.LowestPermToView == "General Contractor");
             }
             // SRS: Commented this out just in case they want the Sub Contractors to have access to the History again (11/8/19)
             // else if (User.Identity.IsSubContractor())
             // {
             //     int? currentSubcontractorId = User.Identity.GetSubcontractorID();
-            //     model = _context.PayAppHistoryVws.Where(payApp =>
+            //     return _context.PayAppHistory_vw.Where(payApp =>
             //         payApp.LowestPermToView == "Subcontractor");
             // }
             else
             {
-                model = null;
+                return null;
             }
-
-            return model;
-            */
-
-            // For now, return all PayAppHistory records
-            return _context.PayAppHistoryVws.OrderBy(h => h.CreateDt);
         }
 
         [EnableQuery]
-        public ActionResult<IQueryable<PayAppHistoryVw>> Get()
+        public ActionResult<IQueryable<PayAppHistoryVw>> Get(ODataQueryOptions<PayAppHistoryVw> queryOptions)
         {
-            //auth check
-            /*
             if (User.Identity.IsServiceUser())
             {
                 return null;
             }
-            */
-            var model = _context.PayAppHistoryVws.OrderBy(h => h.PayAppHistoryId);
-            if (model == null)
+
+            try
+            {
+                queryOptions.Validate(_validationSettings);
+
+            }
+            catch (ODataException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+
+            return Ok(GetSecureModel());
+        }
+
+        [EnableQuery]
+        public ActionResult<PayAppHistoryVw> Get([FromRoute] int key, ODataQueryOptions<PayAppHistoryVw> queryOptions)
+        {
+
+            if (User.Identity.IsServiceUser())
+            {
                 return BadRequest();
-
-            return Ok(model);
-        }
-
-        [EnableQuery]
-        public ActionResult<PayAppHistoryVw> Get([FromRoute] int key)
-        {
-            //auth check
-            /*
-            if (User.Identity.IsServiceUser())
-            {
-                return null;
             }
-            */
-            var model = _context.PayAppHistoryVws.FirstOrDefault(h => h.PayAppHistoryId == key);
+
+            try
+            {
+                queryOptions.Validate(_validationSettings);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+
+            var model = GetSecureModel().FirstOrDefault(h => h.PayAppHistoryId == key);
             if (model == null)
                 return NotFound();
 
@@ -106,15 +116,13 @@ namespace NewVivaApi.Controllers.Odata
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] PayAppHistoryVw model)
         {
-            //auth check
-            /*
             if (User.Identity.IsServiceUser())
             {
                 return BadRequest();
             }
-            */
 
-            if (!ModelState.IsValid){
+            if (!ModelState.IsValid)
+            {
                 return BadRequest(ModelState);
             }
 
@@ -133,6 +141,12 @@ namespace NewVivaApi.Controllers.Odata
             dbModel.LastUpdateDt = DateTimeOffset.UtcNow;
             dbModel.LastUpdateUser = "deki@steeleconsult.com";
 
+            TryValidateModel(dbModel);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             _context.PayAppHistories.Add(dbModel);
 
             try
@@ -141,8 +155,8 @@ namespace NewVivaApi.Controllers.Odata
             }
             catch (DbUpdateException ex)
             {
-                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             var resultModel = _mapper.Map<PayAppHistoryVw>(dbModel);
@@ -165,6 +179,6 @@ namespace NewVivaApi.Controllers.Odata
 
         }
 
-            
+
     }
 }

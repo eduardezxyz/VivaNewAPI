@@ -16,6 +16,8 @@ using NewVivaApi.Authentication.Models;
 using NewVivaApi.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.OData.Query;
+using Microsoft.AspNetCore.OData.Query.Validator;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -72,7 +74,33 @@ builder.Services.AddControllers()
         .Expand()
         .Count()
         .SetMaxTop(100)
+        .EnableQueryFeatures()
         .AddRouteComponents("odata", GetEdmModel()));
+
+
+
+// ----------------------
+// ADD OData Validation Settings Registration
+// ----------------------
+builder.Services.AddSingleton<ODataValidationSettings>(provider =>
+{
+    return new ODataValidationSettings
+    {
+        MaxTop = 100,                    // Maximum records per request
+        MaxExpansionDepth = 2,          // Maximum $expand depth  
+        MaxNodeCount = 100,             // Maximum query complexity
+        MaxAnyAllExpressionDepth = 1,   // Max depth for any/all expressions
+        MaxOrderByNodeCount = 5,        // Max number of orderby expressions
+        AllowedQueryOptions = 
+            AllowedQueryOptions.Filter | 
+            AllowedQueryOptions.Select | 
+            AllowedQueryOptions.Top |
+            AllowedQueryOptions.Skip |
+            AllowedQueryOptions.OrderBy |
+            AllowedQueryOptions.Expand |
+            AllowedQueryOptions.Count
+    };
+});
 
 // ----------------------
 // Services

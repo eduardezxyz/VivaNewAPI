@@ -13,6 +13,9 @@ using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using NewVivaApi.Extensions;
+using Microsoft.OData;
+using Microsoft.AspNetCore.OData.Query.Validator;
+using System.Data.Common;
 
 namespace NewVivaApi.Controllers.OData
 {
@@ -20,21 +23,25 @@ namespace NewVivaApi.Controllers.OData
     public class PayAppPaymentsController : ODataController
     {
         private readonly AppDbContext _context;
-        //private readonly ODataValidationSettings _validationSettings = new ODataValidationSettings();
         private readonly IMapper _mapper;
         private readonly ILogger<PayAppPaymentsController> _logger;
         private readonly FinancialSecurityService _financialSecurityService;
+        private readonly ODataValidationSettings _validationSettings;
+
 
         public PayAppPaymentsController(
             AppDbContext context,
             IMapper mapper,
             ILogger<PayAppPaymentsController> logger,
+            ODataValidationSettings validationSettings,
             FinancialSecurityService financialSecurityService)
         {
             _context = context;
             _mapper = mapper;
             _logger = logger;
             _financialSecurityService = financialSecurityService;
+            _validationSettings = validationSettings;
+
         }
 
         private IQueryable<PayAppPaymentsVw> GetSecureModel()
@@ -77,26 +84,40 @@ namespace NewVivaApi.Controllers.OData
         }
 
         [EnableQuery]
-        public ActionResult<IQueryable<PayAppPaymentsVw>> Get()
+        public ActionResult<IQueryable<PayAppPaymentsVw>> Get(ODataQueryOptions<PayAppPaymentsVw> queryOptions)
         {
             if (User.Identity?.IsServiceUser() == true)
             {
                 return BadRequest();
             }
 
-            var model = GetSecureModel().OrderBy(p => p.PaymentId);
-            if (model == null)
-                return BadRequest();
+            try
+            {
+                queryOptions.Validate(_validationSettings);
+            }
+            catch (ODataException ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
-            return Ok(model);
+            return Ok(GetSecureModel());
         }
 
         [EnableQuery]
-        public ActionResult<PayAppPaymentsVw> Get([FromRoute] int key)
+        public ActionResult<PayAppPaymentsVw> Get([FromRoute] int key, ODataQueryOptions<PayAppPaymentsVw> queryOptions)
         {
             if (User.Identity?.IsServiceUser() == true)
             {
                 return BadRequest();
+            }
+
+            try
+            {
+                queryOptions.Validate(_validationSettings);
+            }
+            catch (ODataException ex)
+            {
+                return BadRequest(ex.Message);
             }
 
             var model = GetSecureModel().FirstOrDefault(pap => pap.PaymentId == key);
@@ -104,6 +125,8 @@ namespace NewVivaApi.Controllers.OData
             {
                 return NotFound();
             }
+
+            model.JsonAttributes = _financialSecurityService.GenerateUnprotectedJsonAttributes(model.JsonAttributes);
             return Ok(model);
         }
 
@@ -136,10 +159,10 @@ namespace NewVivaApi.Controllers.OData
             databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
 
 
-            // if (!TryValidateModel(databaseModel))
-            // {
-            //     return BadRequest(ModelState);
-            // }
+            if (!TryValidateModel(databaseModel))
+            {
+                return BadRequest(ModelState);
+            }
 
             _context.PayAppPayments.Add(databaseModel);
 
@@ -147,10 +170,10 @@ namespace NewVivaApi.Controllers.OData
             {
                 await _context.SaveChangesAsync();
             }
-            catch (Exception ex)
+            catch (DbUpdateException ex)
             {
-                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
-                return BadRequest($"Database error: {ex.Message}. Inner: {innerMessage}");
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
 
             model.PayAppId = databaseModel.PayAppId;
@@ -210,10 +233,10 @@ namespace NewVivaApi.Controllers.OData
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
             databaseModel.CreatedByUser = createdByUser;
 
-            // if (!TryValidateModel(model))
-            // {
-            //     return BadRequest(ModelState);
-            // }
+            if (!TryValidateModel(databaseModel))
+            {
+                return BadRequest(ModelState);
+            }
 
             try
             {

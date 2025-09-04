@@ -19,21 +19,27 @@ using NewVivaApi.Authentication;
 using Microsoft.AspNetCore.Identity;
 using NewVivaApi.Extensions;
 using Microsoft.AspNet.Identity;
+using Microsoft.AspNetCore.OData.Query.Validator;
 
 namespace NewVivaApi.Controllers
 {
-    // [Authorize]
+    [Authorize]
     public class UserProfilesController : ODataController
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _userManager;
+        private readonly ODataValidationSettings _validationSettings;
 
-        public UserProfilesController(AppDbContext context, IMapper mapper, Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager)
+        public UserProfilesController(AppDbContext context, IMapper mapper,
+        Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager,
+        ODataValidationSettings validationSettings)
         {
             _context = context;
             _mapper = mapper;
             _userManager = userManager;
+            _validationSettings = validationSettings;
+
         }
 
         private IQueryable<UserProfilesVw> GetSecureModel()
@@ -77,25 +83,40 @@ namespace NewVivaApi.Controllers
         }
 
         [EnableQuery]
-        public ActionResult<IQueryable<UserProfilesVw>> Get()
+        public ActionResult<IQueryable<UserProfilesVw>> Get(ODataQueryOptions<UserProfilesVw> queryOptions)
         {
             if (User.Identity.IsServiceUser())
             {
                 return null;
             }
-            var model = GetSecureModel().OrderBy(u => u.UserId);
-            if (model == null)
-                return BadRequest();
+            try
+            {
+                queryOptions.Validate(_validationSettings);
 
-            return Ok(model);
+            }
+            catch (ODataException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+
+            return Ok(GetSecureModel());
         }
 
         [EnableQuery]
-        public ActionResult<UserProfilesVw> Get(string key)
+        public ActionResult<UserProfilesVw> Get(string key, ODataQueryOptions<UserProfilesVw> queryOptions)
         {
             if (User.Identity.IsServiceUser())
             {
                 return null;
+            }
+
+            try
+            {
+                queryOptions.Validate(_validationSettings);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
             }
 
             var model = GetSecureModel().FirstOrDefault(u => u.UserId == key);
@@ -189,13 +210,10 @@ namespace NewVivaApi.Controllers
         [HttpPatch("{key}")]
         public async Task<IActionResult> Patch(string key, [FromBody] JsonElement data)
         {
-            // Temporarily comment out auth check
-            /*
             if (User.Identity.IsServiceUser())
             {
                 return BadRequest();
             }
-            */
 
             try
             {
@@ -240,8 +258,8 @@ namespace NewVivaApi.Controllers
             }
             catch (DbUpdateException ex)
             {
-                Console.WriteLine($"Patch error: {ex.Message}");
-                return StatusCode(500, new { Type = "error", Message = "Internal server error" });
+                var exceptionFormatter = new DbEntityValidationExceptionFormatter(ex);
+                return BadRequest(exceptionFormatter.Message);
             }
         }
 
