@@ -61,10 +61,10 @@ namespace NewVivaApi.Controllers.OData
             databaseModel.LastUpdateUser = User.Identity?.Name ?? "Unknown";
             databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
 
-            if (!TryValidateModel(databaseModel))
-            {
-                return BadRequest(ModelState);
-            }
+            // if (!TryValidateModel(databaseModel))
+            // {
+            //     return BadRequest(ModelState);
+            // }
 
             _context.Subcontractors.Add(databaseModel);
             try
@@ -104,10 +104,10 @@ namespace NewVivaApi.Controllers.OData
             databaseModel.DommainName = model.DommainName;
             databaseModel.CreatedByUser = User.Identity?.Name ?? "Unknown";
 
-            if (!TryValidateModel(databaseModel))
-            {
-                return BadRequest(ModelState);
-            }
+            // if (!TryValidateModel(databaseModel))
+            // {
+            //     return BadRequest(ModelState);
+            // }
 
             _context.GeneralContractors.Add(databaseModel);
             try
@@ -177,12 +177,12 @@ namespace NewVivaApi.Controllers.OData
             // Assign the navigation property
             databaseModel.GeneralContractor = generalContractor;
 
-            if (!TryValidateModel(databaseModel))
-            {
-                Console.WriteLine("Model validation failed");
-                Console.WriteLine("ModelState errors: " + string.Join(", ", ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))));
-                return BadRequest(ModelState);
-            }
+            // if (!TryValidateModel(databaseModel))
+            // {
+            //     Console.WriteLine("Model validation failed");
+            //     Console.WriteLine("ModelState errors: " + string.Join(", ", ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))));
+            //     return BadRequest(ModelState);
+            // }
 
             var generalContractorExists = await _context.GeneralContractors
                 .AnyAsync(p => p.GeneralContractorId == databaseModel.GeneralContractorId && 
@@ -333,11 +333,11 @@ namespace NewVivaApi.Controllers.OData
                 return BadRequest("Approved Amount must be null when creating a Pay App");
             }
 
-            TryValidateModel(databaseModel);
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            // TryValidateModel(databaseModel);
+            // if (!ModelState.IsValid)
+            // {
+            //     return BadRequest(ModelState);
+            // }
 
             // var subcontractorProjectExists = await _context.SubcontractorProjects
             //     .AnyAsync(p => p.SubcontractorProjectId == databaseModel.SubcontractorProjectId && 

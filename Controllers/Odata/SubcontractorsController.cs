@@ -101,7 +101,7 @@ namespace NewVivaApi.Controllers.Odata
         {
             if (User.Identity.IsServiceUser())
             {
-                return BadRequest();
+                return BadRequest("Service user detected in Get all Subcontractors.");
             }
             try
             {
